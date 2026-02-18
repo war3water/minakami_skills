@@ -1,185 +1,86 @@
 # Deduplication Guide
 
-Detailed patterns for identifying and safely removing duplicate code across any programming language.
+Use this reference when candidate volume is high or duplicate analysis needs stronger evidence.
 
-## Table of Contents
+## Detection Pipeline
 
-1. [Duplicate Detection Methods](#duplicate-detection-methods)
-2. [Safe Merge Patterns](#safe-merge-patterns)
-3. [Dependency Analysis](#dependency-analysis)
-4. [Verification Steps](#verification-steps)
+1. Inventory files
+- Use fast listing first: `rg --files`.
+- Segment by language and source roots before deeper analysis.
 
----
+2. Identify exact duplicates
+- Hash file contents (`sha256`) to find byte-identical files.
+- Validate path intent before removal (generated files and templates can be intentionally duplicated).
 
-## Duplicate Detection Methods
+3. Identify near duplicates
+- Build symbol inventory with `rg -n` for function/class definitions.
+- Compare signatures, control flow shape, and error behavior.
+- Treat similarity-only findings as `Medium` confidence until usage analysis passes.
 
-### Exact Duplicates (Type 1)
+4. Build usage map
+- Locate all references with `rg -n "<symbol_or_module>"`.
+- Check static and common dynamic loading paths.
+- Include tests and scripts in the search scope unless explicitly excluded.
 
-Identical code blocks (ignoring whitespace/comments).
+5. Rank by confidence
+- `High`: exact duplicate + verified safe dependents.
+- `Medium`: near duplicate + mostly aligned behavior.
+- `Low`: uncertain reachability, reflection/dynamic loading, or public API exposure.
 
-**Detection approach:**
+## Merge Decision Rules
 
-1. Read file contents using `view_file`
-2. Compare content directly or conceptually
-3. Group files with identical logic
+- Merge only if semantics, side effects, and error behavior are compatible.
+- Keep one canonical implementation with tests covering merged behavior.
+- Do not merge functions that differ in contracts, precision, or failure semantics.
 
-### Near Duplicates (Type 2/3)
+## Dynamic Reference Watchlist
 
-Similar code with minor variations (renamed variables, reordered statements).
+Search for patterns that hide dependencies:
+- Python: `importlib`, `__import__`, `getattr` with string module paths
+- JavaScript/TypeScript: `import()`, variable `require(...)`
+- Java/JVM: reflection and class-name strings
+- Framework registries and plugin maps in config files
 
-**Detection approach:**
+If dynamic usage is plausible and unproven, keep candidate risk at `Low` and require explicit approval.
 
-1. Search for similar function names using `grep_search`
-2. Read and compare function bodies
-3. Identify structural similarities despite naming differences
+## Verification Matrix
 
-**Example queries:**
+Run checks matching project stack:
 
-| Language | Function Definition Pattern |
-|----------|----------------------------|
-| Python | `^def \|^async def ` |
-| Java | `public\|private\|protected .* \(` |
-| Go | `^func ` |
-| JavaScript | `^function \|^const .* = \(` |
-| C/C++ | Pattern: return type + name + `(` |
-| Rust | `^fn \|^pub fn ` |
+| Stack | Core checks |
+|---|---|
+| Python | `python -m compileall`, `pytest` |
+| JS/TS | `npm run build`/`pnpm build`, `npm test`, `tsc --noEmit` |
+| Go | `go build ./...`, `go test ./...` |
+| Rust | `cargo check`, `cargo test` |
+| Java | `mvn test` or `gradle test` |
+| C/C++ | project build + test target |
 
-### Function-Level Duplicates
+For unlisted stacks/frameworks, use this fallback verification sequence:
 
-Compare individual functions across files:
+1. Run syntax/type validation (or equivalent static checks).
+2. Run the project build/compile step for impacted modules.
+3. Run automated tests for the impacted scope; prefer full suite if risk is high.
+4. Run a minimal runtime smoke check for entry points affected by cleanup.
+5. Treat failures or missing tooling as `Medium`/`Low` confidence and require explicit user approval before deletion.
 
-1. **Find all function definitions** using language-appropriate grep patterns
-2. **Group by function name** — Same names in different files may be duplicates
-3. **Compare bodies** — Read each and assess similarity
-4. **Check signatures** — Identical signatures with different bodies = potential conflict
+## Rollback Pattern
 
----
+Normative rollback rules are defined in `SKILL.md`; this section provides optional command examples.
 
-## Safe Merge Patterns
+Example order:
 
-### Pattern 1: Consolidate to Shared Module
+1. Try the active agent's native undo/revert if available in the current context.
+2. Restore from a temporary pre-batch backup stored outside the project repository.
+3. Use Git rollback only when explicitly requested by the user.
 
-**Before:**
-
-```text
-src/
-├── module_a/utils.py  # def format_date(d): ...
-└── module_b/utils.py  # def format_date(d): ...  (duplicate)
-```
-
-**After:**
-
-```text
-src/
-├── shared/date_utils.py  # def format_date(d): ...
-├── module_a/             # imports from shared
-└── module_b/             # imports from shared
-```
-
-### Pattern 2: Extract Base Class/Interface
-
-When multiple classes share methods, extract common behavior.
-
-**Works in:** Python (mixin), Java (interface/abstract), Go (embedded struct), Rust (trait)
-
-### Pattern 3: Parameterize Differences
-
-When functions differ only in configuration, merge with parameters.
-
-**Example concept:**
-
-```text
-# Before
-process_csv() -> uses ','
-process_tsv() -> uses '\t'
-
-# After
-process_file(delimiter) -> single implementation
-```
-
----
-
-## Dependency Analysis
-
-### Import Pattern Reference
-
-| Language | Import Search Pattern | Export Search Pattern |
-|----------|----------------------|----------------------|
-| Python | `^import \|^from .* import` | `^def \|^class \|^__all__` |
-| Java | `^import ` | `^public ` |
-| Go | `^import ` | Capitalized identifiers |
-| JavaScript | `import \|require\(` | `export \|module.exports` |
-| TypeScript | `import \|from ` | `export ` |
-| C/C++ | `^#include` | Header file declarations |
-| Rust | `^use \|^mod ` | `^pub ` |
-
-### Safe Removal Check
-
-Before removing a file/function, verify:
-
-1. **No direct imports**: Search for import statements referencing the target
-2. **No dynamic imports**: Search for dynamic loading patterns
-3. **No string references**: Search for string literals containing the name
-4. **No test dependencies**: Check test files separately
-
-**Language-specific dynamic import patterns:**
-
-| Language | Dynamic Import Pattern |
-|----------|----------------------|
-| Python | `importlib`, `__import__()` |
-| Java | `Class.forName()`, reflection |
-| JavaScript | `import()`, `require(var)` |
-| Go | Generally not applicable |
-| Rust | Generally not applicable |
-
----
-
-## Verification Steps
-
-### Pre-Removal Checklist
-
-```text
-[ ] No imports found for this module/function
-[ ] No string references found
-[ ] Tests pass with file present
-[ ] File is not an entry point (main, index)
-[ ] File is not in public exports (__init__.py, index.js, mod.rs)
-```
-
-### Post-Removal Verification
-
-Run language-appropriate checks:
-
-| Language | Syntax Check | Import Check | Test Command |
-|----------|-------------|--------------|--------------|
-| Python | `python -m py_compile file.py` | `python -c "import pkg"` | `pytest` |
-| Java | `javac File.java` | Compile succeeds | `mvn test` |
-| Go | `go build` | `go build` | `go test ./...` |
-| JavaScript | Lint (ESLint) | `node -e "require('pkg')"` | `npm test` |
-| TypeScript | `tsc --noEmit` | `tsc` | `npm test` |
-| C/C++ | `gcc/g++ -c file.c` | Link succeeds | `make test` |
-| Rust | `cargo check` | `cargo build` | `cargo test` |
-
-### Rollback Procedure
-
-If verification fails:
+If Git rollback is explicitly requested:
 
 ```bash
-# Restore from git
-git checkout -- removed_file.py
-
-# Or restore from backup
-mv removed_file.py.bak removed_file.py
+git restore -- <affected_paths>
+# or
+git revert <commit_sha>
 ```
 
----
 
-## Tips for Claude
 
-When using this skill, Claude should:
-
-1. **Use `grep_search`** to find definitions and usages
-2. **Use `view_file`** to compare function bodies
-3. **Use `find_by_name`** to locate files by extension
-4. **Document findings** in a structured report before suggesting removals
-5. **Always ask for user approval** before deleting or merging code

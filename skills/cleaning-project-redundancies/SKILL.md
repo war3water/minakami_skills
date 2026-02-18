@@ -1,260 +1,169 @@
 ---
 name: cleaning-project-redundancies
-description: Analyze and clean redundant files, duplicate functions, and code in projects while preserving original behavior. Use when users ask to deduplicate code, remove unused files, identify duplicate functions, clean up a codebase, refactor for DRY principles, or reorganize project folder structure. Performs deep dependency analysis to prevent breaking changes.
+description: Analyze and safely remove project redundancies while preserving behavior. Use when users ask to deduplicate files/functions/modules, remove unused code, consolidate overlapping implementations, or reorganize folder structure with dependency-aware risk control and verification.
 ---
 
 # Cleaning Project Redundancies
 
-Analyze projects to identify and safely remove redundant files, duplicate functions, and unused code while preserving original behavior and preventing breaking changes.
+Use this skill to reduce duplication without introducing regressions.
 
-## Core Principles
+For detailed patterns, load only when needed:
+- `references/deduplication-guide.md`
+- `references/folder-reorganization.md`
 
-1. **Behavior Preservation**: Never alter function logic, inputs, or outputs
-2. **Dependency Safety**: Deep analysis of imports, usages, and relationships before any removal
-3. **Incremental Changes**: Small, verifiable steps with rollback capability
-4. **User Approval**: Always present findings before executing changes
+## Operating Priorities
 
-## Workflow
+1. Behavior preservation
+2. Dependency and API safety
+3. Reversibility and rollback readiness
+4. Scope discipline
+5. Cleanup completeness
 
-Copy this checklist and track progress:
+If priorities conflict, choose the higher priority unless the user explicitly overrides.
+
+## Rule Semantics
+
+- `MUST`: required for all cleanup changes.
+- `SHOULD`: default recommendation; deviation requires rationale.
+- `MAY`: optional enhancement.
+
+## Enforcement Standard
+
+Require these before mutation:
+- Explicit scope and exclusions.
+- Dependency/reachability evidence for each removal.
+- Risk tier and rollback path.
+- Verification plan with acceptance criteria.
+- Explicit user approval before destructive changes.
+
+## Required Practices
+
+1. Define scope and exclusions (`MUST`)
+- Identify in-scope directories and file types.
+- Exclude generated/vendor/build outputs unless user explicitly includes them.
+- Protect entry points, public API surfaces, and critical config by default.
+
+2. Build dependency and reachability map (`MUST`)
+- Use fast file/symbol discovery (`rg --files`, `rg -n`) to map definitions, imports, exports, and call sites.
+- Check both static references and common dynamic loading patterns.
+- Treat unknown usage as risky, not safe.
+
+3. Classify redundancy candidates (`MUST`)
+- Separate exact duplicates, near duplicates, unused exports, and dead code.
+- Do not classify by name similarity alone; confirm behavior and usage.
+- Mark confidence as `High`, `Medium`, or `Low` based on evidence quality.
+
+4. Produce cleanup proposal before edits (`MUST`)
+- For every candidate, include reason, dependents, risk tier, and proposed action.
+- Request explicit user approval for delete/merge/move operations.
+
+5. Execute in reversible batches (`MUST`)
+- Apply changes in small batches with clear commit boundaries.
+- Update imports/references in the same batch as the moved/merged artifact.
+- Keep rollback path ready (agent-native revert/undo first; use Git rollback only on explicit user request).
+
+6. Verify each batch (`MUST`)
+- Run language-appropriate syntax/build/tests.
+- Confirm entry points and public API imports still resolve.
+- Stop immediately on regression and roll back the failing batch.
+
+7. Use evidence-based optimization for large repos (`SHOULD`)
+- Start with cheap detection (path inventory, hashing, symbol index).
+- Use deeper semantic comparison only for high-value candidates.
+- Prefer scalable methods over manual full-repo inspection when repository size is large.
+
+## Think-Before-Change Protocol
+
+Use this for merges, deletions, and folder reorganization.
+
+1. Define constraints
+- Behavior that MUST remain unchanged.
+- Public API compatibility expectations.
+- Time budget and acceptable cleanup risk.
+
+2. Design the action
+- Candidate set and action per item (remove, merge, move, keep).
+- Risk tier and rollback method per action.
+
+3. Define verification
+- Tests/checks required after each batch.
+- Acceptance criteria for correctness and stability.
+
+4. Execute and verify
+- Apply one batch.
+- Run checks.
+- Continue only if acceptance criteria pass.
+
+Exemption: no-behavior-change edits only (comments, formatting, pure rename with verified references).
+
+## Verification & Acceptance
+
+Minimum acceptance checks:
+- No broken imports/includes/exports in affected modules.
+- Syntax/build/tests pass for impacted scope.
+- Entry points still run/import correctly.
+- Public API compatibility is preserved or explicitly approved to change.
+- All changes are traceable to approved proposal items.
+
+
+## Rollback Policy
+
+- `MUST`: Attempt agent-available revert/undo first for failed cleanup batches.
+- `MUST`: If native revert is interactive or unavailable, stop mutation and request explicit user instruction.
+- `SHOULD`: Prefer small reversible batches to minimize rollback scope.
+- `MAY`: Use `git restore` or `git revert` only when the user explicitly requests Git-based rollback.
+
+When rollback requires user UI interaction, do not continue edits until user confirms action.
+
+## Failure Modes to Guard
+
+- Removing code with unresolved dynamic references.
+- Merging functions with incompatible semantics or error behavior.
+- Deleting fixtures/tests because they appear unused.
+- Performing large unbatched changes without rollback checkpoints.
+- Treating build output changes as proof of behavioral safety.
+
+## Deliverable Template
+
+When applying this skill, output:
+
+1. Scope and assumptions
+2. Candidate inventory with confidence and risk tiers
+3. Proposed batch sequence and rollback plan
+4. Verification plan and acceptance criteria
+5. Execution summary and residual risks
+
+### Template: Cleanup Proposal
 
 ```text
-Cleanup Progress:
-- [ ] Step 1: Analyze project structure
-- [ ] Step 2: Build dependency graph
-- [ ] Step 3: Identify duplicates and redundancies
-- [ ] Step 4: Generate cleanup report
-- [ ] Step 5: Execute approved changes
-- [ ] Step 6: Verify no breaking changes
+Scope:
+Protected areas:
+Candidate set:
+Proposed actions:
+Risk tiers:
+Rollback plan:
+Approval required:
 ```
 
-### Step 1: Analyze Project Structure
-
-Use available tools to scan the project:
-
-**Principle: Detect language from project files first**
-
-1. Look for language indicators:
-   - Build files: `pom.xml` (Java), `go.mod` (Go), `Cargo.toml` (Rust), `package.json` (JS/TS), `requirements.txt`/`pyproject.toml` (Python)
-   - File extensions in the project root and src directories
-
-2. Once language is identified, search for source files:
-   - Use `find_by_name` with detected extensions
-   - Check project conventions for source directories (src/, lib/, app/, pkg/)
-
-3. Use `grep_search` to understand code patterns:
-   - Search for import/include statements (language-appropriate)
-   - Search for function/class definitions
-
-Document:
-
-- Detected primary language(s)
-- Entry points (main files, index files)
-- Core modules vs utilities
-- Test directories
-- Config files
-
-### Step 2: Build Dependency Graph
-
-For each major file, identify:
-
-- **Imports**: What it depends on
-- **Exports**: What it exposes (public functions/classes)
-- **Usages**: Where it's referenced
-
-**Common import patterns (examples, not exhaustive):**
-
-| Language | Import Pattern | Search Query |
-|----------|----------------|--------------|
-| Python | `import x`, `from x import y` | `^import\|^from .* import` |
-| Java | `import package.Class;` | `^import ` |
-| Go | `import "package"` | `^import ` |
-| C/C++ | `#include <header>` | `^#include` |
-| JavaScript | `import`, `require()` | `import\|require\(` |
-| Rust | `use crate::`, `mod` | `^use \|^mod ` |
-
-> [!TIP]
-> **For unlisted languages:** Look at the language's documentation for import/include syntax, then construct an appropriate grep pattern. The principle is: find how modules reference each other.
-
-### Step 3: Identify Duplicates and Redundancies
-
-**Detection methods (language-agnostic):**
-
-1. **Exact duplicates**: Files with identical content (compare via reading)
-2. **Near duplicates**: Functions with similar structure (read and compare)
-3. **Unused exports**: Functions never imported elsewhere
-4. **Dead code**: Unreachable code paths
-
-**How to find duplicates without scripts:**
-
-1. Use `grep_search` to find function/class definitions
-2. Use `view_file` to read and compare similar-named functions
-3. Search for imports of each function to verify usage
-
-**Example workflow:**
+### Template: Candidate Row
 
 ```text
-# Find all function definitions
-grep_search(Query="^def |^function |^func |public .* \(", SearchPath="src/")
-
-# For each function, search for its usages
-grep_search(Query="function_name", SearchPath=".")
-
-# If no usages found outside definition file, it may be unused
+Item:
+Type (exact duplicate / near duplicate / unused / dead code):
+Evidence:
+Dependents:
+Risk tier:
+Proposed action:
 ```
 
-### Step 4: Generate Cleanup Report
+### Template: Verification Summary
 
-Create a structured report:
-
-```markdown
-# Cleanup Report: [Project Name]
-
-## Summary
-- Files analyzed: [N]
-- Duplicate groups found: [N]
-- Unused files identified: [N]
-
-## Safe to Remove (No Dependencies)
-
-| File/Function | Reason | Confidence |
-|---------------|--------|------------|
-| utils/old_helper.py | No imports found | High |
-
-## Requires Review (Has Dependencies)
-
-| File/Function | Dependents | Suggested Action |
-|---------------|------------|------------------|
-| lib/parser.py:parse_v1() | 2 files | Merge with parse_v2() |
+```text
+Batch:
+Checks run:
+Results:
+Regressions found:
+Rollback executed (if any):
+Decision:
 ```
 
-### Step 5: Execute Approved Changes
-
-**CRITICAL**: Only proceed after user approval.
-
-For each approved change:
-
-1. **Backup**: Use git or create backup copies
-2. **Remove/Refactor**: Execute the change
-3. **Update imports**: Fix all dependent files
-4. **Test**: Run project tests
-
-### Step 6: Verify No Breaking Changes
-
-Run language-appropriate verification:
-
-| Language | Verification Commands |
-|----------|----------------------|
-| Python | `pytest`, `python -c "import package"` |
-| Java | `mvn test`, `gradle test` |
-| Go | `go test ./...`, `go build` |
-| JavaScript | `npm test`, `yarn test` |
-| C/C++ | `make test`, `cmake --build . --target test` |
-| Rust | `cargo test`, `cargo build` |
-
-## Safety Rules
-
-> [!CAUTION]
-> Never remove without completing dependency analysis
-
-- **DO NOT** remove files that are imported elsewhere
-- **DO NOT** merge functions with different signatures
-- **DO NOT** delete test files or fixtures
-- **DO NOT** modify files outside project scope
-- **ALWAYS** preserve git history (no force rewrites)
-
-## Folder Reorganization
-
-See [references/folder-reorganization.md](references/folder-reorganization.md) for detailed patterns.
-
-Key principles:
-
-- Group by domain/feature, not by type
-- Keep related tests near source files
-- Separate concerns: core, utils, adapters, tests
-- Maintain flat hierarchy (max 3 levels deep)
-
-## Merging Duplicate Functions
-
-When duplicates are found:
-
-1. **Identify the canonical version** — Pick the most complete/tested implementation
-2. **Parameterize differences** — If functions differ only in config, add parameters
-3. **Create shared module** — Move to shared location
-4. **Update all import sites** — Find and replace imports
-5. **Verify with tests** — Run tests after each merge
-
-**Merge decision heuristics:**
-
-| Scenario | Action |
-|----------|--------|
-| Identical functions | Keep one, delete other, update imports |
-| >90% similarity | Merge with parameters if signature compatible |
-| 80-90% similarity | Review manually, may have subtle differences |
-| Different signatures | Do NOT merge, may be intentional |
-
-## Archiving Deprecated Files
-
-Instead of deleting, archive to preserve history:
-
-```bash
-# Move with git history preserved
-git mv old_module.py _archive/old_module.py
-git commit -m "archive: deprecate old_module.py"
-```
-
-## Categorizing Files
-
-Use content-based heuristics:
-
-| File Contains | Category |
-|---------------|----------|
-| HTTP endpoints, routes | `api/` |
-| Database models, ORM | `models/` |
-| Business logic | `core/` |
-| External API clients | `adapters/` |
-| Helper functions | `utils/` |
-| Test files | `tests/` |
-
-## Language-Specific Patterns
-
-**Python**: Check `__init__.py` exports, `__all__` lists, relative imports.
-
-**Java**: Check `public` visibility, package structure, `pom.xml`/`build.gradle` modules.
-
-**Go**: Check exported names (capitalized), `go.mod` dependencies.
-
-**JavaScript/TypeScript**: Check `index.js` re-exports, `package.json` main/exports.
-
-**C/C++**: Check header guards, `#include` paths, namespace usage.
-
-**Rust**: Check `pub` visibility, `mod.rs` structure, `Cargo.toml` dependencies.
-
-## Error Handling
-
-If analysis fails:
-
-1. Check file encoding (use UTF-8)
-2. Verify syntax is valid (no parse errors)
-3. Exclude generated files (node_modules, target, build, dist)
-4. Retry with smaller scope
-
-## Output Format
-
-Final report structure:
-
-```json
-{
-  "project": "project-name",
-  "language": "detected-language",
-  "summary": {
-    "files_scanned": 150,
-    "duplicates_found": 12,
-    "unused_files": 5,
-    "safe_removals": 8
-  },
-  "duplicates": [],
-  "unused": [],
-  "reorganization": {}
-}
-```
