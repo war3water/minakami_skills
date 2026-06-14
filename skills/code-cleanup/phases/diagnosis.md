@@ -86,7 +86,7 @@ If static call graph accuracy is uncertain, say so clearly.
 
 ---
 
-> *PATCHES guard:* For "excessive nesting" and "excessive indirection" issues, use the full [PATCHES.md §5](../PATCHES.md) technique catalog (allowed micro-refactors + when NOT to flatten). For "dead code candidates" and "orphaned files", route through [PATCHES.md §6](../PATCHES.md) (8-step Safe-Deletion Playbook). For uncertain items, use [PATCHES.md §7](../PATCHES.md) (Needs-Verification Resolution Loop) — batched user yes/no, not per-item asking.
+> *PATCHES guard:* For "excessive nesting" and "excessive indirection" issues, use the full [PATCHES.md §5](../PATCHES.md) technique catalog (allowed micro-refactors + when NOT to flatten). For "dead code candidates" and "orphaned files", route through [PATCHES.md §6](../PATCHES.md) (8-step Safe-Deletion Playbook); for an exhaustive dead-weight audit add [PATCHES.md §15](../PATCHES.md) (whole-tree reachability + data-flow sweeps for test-only orphans and unwired branches). For uncertain items, use [PATCHES.md §7](../PATCHES.md) (Needs-Verification Resolution Loop) — batched user yes/no, not per-item asking.
 
 ## Phase 4: Maintainability Diagnosis
 

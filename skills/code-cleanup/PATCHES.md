@@ -10,16 +10,15 @@ but does not detail.
 
 **Where this file conflicts with `SKILL.md`, this file wins.**
 
-Sources behind these patches are listed in §12. Most-cited:
+Sources behind these patches: Fowler (*Refactoring*), Feathers (*Working Effectively with Legacy Code*),
+Ousterhout (*A Philosophy of Software Design*), Tornhill/CodeScene (hotspots), the Mikado Method, *Software
+Engineering at Google*, and arXiv 2511.04824 + 2411.04444 (agentic-refactoring studies) — full list in §12.
 
-- Fowler, *Refactoring* (2nd ed.)
-- Feathers, *Working Effectively with Legacy Code*
-- Ousterhout, *A Philosophy of Software Design*
-- Tornhill / CodeScene — hotspot analysis
-- Mikado Method (Ellnestam & Brolund)
-- *Software Engineering at Google* (Winters, Manshreck, Wright)
-- arXiv 2511.04824 — *Agentic Refactoring: An Empirical Study* (Nov 2025)
-- arXiv 2411.04444 — *LLMs in Automated Software Refactoring + RefactoringMirror* (Nov 2024)
+---
+
+## Contents
+
+1. Engineer's First-Impression Test · 2. Four Design Principles · 3. Hard Safety Rules · 4. Hotspot Precondition · 5. Reduce-Nesting Technique Catalog · 6. Safe-Deletion Playbook · 7. Needs-Verification Resolution Loop · 8. Small-Project Fast Path · 9. Macro vs Micro Refactor · 10. Google + Reputable OSS Structural Exemplars · 11. Errata to SKILL.md · 12. References · 13. Glossary of Professional Problem Categories · 14. Recommended Tools · 15. Dead-weight sweep — reachability + data-flow
 
 ---
 
@@ -164,6 +163,9 @@ git log --since='365 days ago' --pretty=format: --name-only \
   | grep -v '^$' | sort | uniq -c | sort -rn | head -30
 ```
 
+Or run `python scripts/hotspots.py` (churn × LoC, language-agnostic — the same
+intersection in one command).
+
 Then cross-reference churn ∩ complexity (LoC, cyclomatic, cognitive).
 That intersection is the hotspot set.
 
@@ -292,7 +294,9 @@ Don't pick the newest variant just because it's newest — recency bias is its o
 **All eight steps required before any hard delete.**
 
 1. **Establish suspect set** via static tooling (vulture / Knip /
-   ts-unused-exports). Treat as *suspects*, never as a delete list.
+   ts-unused-exports; for Python, `scripts/dead_candidates.py` also flags
+   TEST_ONLY orphans + ZERO_REF and tags likely false positives — see §15).
+   Treat as *suspects*, never as a delete list.
 2. **Filter through dynamic-use patterns** — string-name references
    (`"FunctionName"`), `importlib` / `__import__` / dynamic `import()`,
    framework decorators (`@app.route`, `@pytest.fixture`, Django URLs,
@@ -426,16 +430,12 @@ the closest exemplar to the project's archetype.
   are **canonical**. The inline "Output Format" sections in SKILL.md
   are quick-read previews only. When emitting a report, copy from the
   template file.
-- **Helper scripts** — `scripts/README.md` describes
-  `find_entrypoints.py`, `collect_imports.py`, `classify_files.py`,
-  `detect_dead_candidates.py`, `generate_architecture_report.py`.
-  **None are implemented.** Treat the README as a roadmap. If a script
-  is needed, build it on demand or use manual procedures in this
-  PATCHES.md (§4 churn one-liner, §6 playbook, §7 loop).
+- **Helper scripts** — `scripts/hotspots.py` (§4) and `scripts/dead_candidates.py` (§6, §15) are implemented;
+  the rest in `scripts/README.md` are a roadmap with manual fallbacks. See that README (single source of truth).
 - **Verification commands** — the per-language analyzers (`vulture`, `pydeps`, `import-linter`, `madge`, `knip`, etc.) are **optional**. Tier order:
   1. **Project-native** — whatever the project's `pyproject.toml` / `package.json` / `Makefile` / `Cargo.toml` / `build.gradle` defines under `test`, `lint`, `typecheck`. These reflect the team's own contract.
   2. **Language built-ins** — `python -m compileall`, `tsc --noEmit`, `go vet`, `cargo check`. Fast smoke checks that catch most regressions without setup.
-  3. **Optional external analyzers** — vulture / pydeps / knip / madge etc. Suggest installing only after the cheaper tiers have run; never require them.
+  3. **Optional external analyzers** — vulture / pydeps / knip / madge etc. (full catalog: §14). Suggest installing only after the cheaper tiers have run; never require them.
 
 ### Per-ecosystem commands (reference catalog)
 
@@ -450,14 +450,6 @@ mypy .
 python -m compileall .
 ```
 
-Optional analyzers:
-
-```bash
-pydeps src/project_name --show-deps --noshow --output import_graph.svg
-vulture src tests --min-confidence 60
-lint-imports
-```
-
 **JavaScript / TypeScript:**
 
 ```bash
@@ -465,14 +457,6 @@ npm test
 npm run lint
 npm run typecheck
 npm run build
-```
-
-Optional analyzers:
-
-```bash
-npx madge src --circular
-npx depcheck
-npx knip
 ```
 
 **Go:**
@@ -605,3 +589,33 @@ Pick analyzers and visualization tools that fit the project's language; do not i
 - `CodeQL` — multi-language semantic analysis.
 - `Sourcegraph` — cross-repo code navigation, especially for library code with external consumers.
 - IDE language-server "Find References" — most reliable single-repo cross-reference, no installation beyond the IDE.
+
+---
+
+## 15. Dead-weight sweep — reachability + data-flow (extends §6)
+
+[§6](PATCHES.md) seeds dead-code suspects from name/AST tools (`vulture` / `knip`), which catch **name-orphans**
+(the name is never referenced) but miss code that is *referenced yet dead*. Run this sweep for an **exhaustive
+dead-weight audit** (not a navigability pass): scan **every** top-level symbol in the whole production tree —
+that exhaustiveness, not a sample, is what guarantees no corner is omitted — and **waive the [§4](PATCHES.md)
+hotspot precondition** (dead weight collects in cold code, not hotspots).
+
+**A — Production reachability (test-only orphans).** A symbol referenced *only by its own tests* passes both
+name-resolution ("live") and coverage ("covered"). For each suspect, split references into production (app/`src`
++ the entry→dispatch graph) vs test-only (Python: `scripts/dead_candidates.py`
+emits this partition — pass your source/test dirs, or let it auto-detect). A test-only symbol that is **not** a public surface (`__all__`, a
+documented back-compat alias, or a `mock.patch` target — [§5.3](PATCHES.md)) is an orphan; remove it **with its
+now-dead tests**.
+
+**B — Data-flow dead branches (unwired code).** A branch is unreachable even when its function runs if it turns on
+a value that is never produced: a config flag defaulting off and never set on; a key/field **read** from a
+produced artifact that nothing **writes**; a struct field the sole constructor never sets and no consumer reads.
+Name-reachability says "live"; only "is this value ever produced?" disproves it.
+
+**Verify, then delete.** Treat each A/B hit as a *candidate* and disprove "live" with code evidence — rule out
+dynamic / decorator / registry dispatch, config-enabled paths, public / external surfaces, and non-default-mode
+fallbacks ([§5.3](PATCHES.md), [§6 step 2](PATCHES.md)). A test-only symbol on a public surface is a **user
+decision**, not an auto-delete ([§7](PATCHES.md)). Then run the full [§6](PATCHES.md) playbook; delete large
+blocks by exact line-range. Apply the same lens to the test suite — drop tests of removed symbols and
+*verified*-redundant duplicates, but never blanket-cut (the suite is the behavior-preservation net; keep
+before == after green on the survivors).

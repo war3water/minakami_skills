@@ -1,6 +1,6 @@
 ---
 name: code-cleanup
-description: Refactor a messy, hard-to-maintain project so a maintainer can read, debug, and modify it quickly. Use when a codebase has unclear module boundaries, deep call nesting, dead-code candidates, duplicated logic, circular imports, misplaced files, spaghetti dependencies, excessive indirection, technical debt, or onboarding-hostile structure. Triggers on phrases like "my code is messy", "pay down tech debt", "clean up", "reorganize", "modularize", "untangle the repo", "organize folders", "reduce nesting", "remove dead/orphaned files", "improve maintainability", or "make debugging easier". Primary outputs — a project structure map, a maintainer-oriented call graph, a ranked refactor plan, and the execution itself. Both staged behavior-preserving changes and scoped rewrites are legitimate paths; the choice follows from what Phase 1's map and call graph reveal, with the user's agreement on scope. Methodology lives in SKILL.md (navigation map) plus phases/*.md (per-stage detail) and PATCHES.md (evidence-based supplements — same folder as SKILL.md). Where PATCHES.md conflicts with SKILL.md or any phase file, PATCHES.md wins.
+description: Refactors a messy, hard-to-maintain project so a maintainer can read, debug, and modify it quickly. Use when a codebase has unclear module boundaries, deep call nesting, dead/orphaned code, duplicated logic, circular imports, misplaced files, spaghetti dependencies, excessive indirection, technical debt, or onboarding-hostile structure. Triggers on phrases like "my code is messy", "pay down tech debt", "clean up", "reorganize", "modularize", "untangle the repo", "reduce nesting", "remove dead code", "improve maintainability", or "make debugging easier". Produces a project structure map, a maintainer-oriented call graph, a ranked refactor plan, and the execution itself — staged behavior-preserving changes or a scoped rewrite, chosen from what the Phase-1 map and call graph reveal, with the user's agreement on scope.
 ---
 
 > **Preamble**
@@ -9,9 +9,7 @@ description: Refactor a messy, hard-to-maintain project so a maintainer can read
 >
 > **This SKILL.md is a navigation map.** Per-stage detail lives in the [phases/](phases/) subdirectory and loads only when the agent enters that stage. [PATCHES.md](PATCHES.md) in the same folder carries the evidence-based safety rules (revert-on-red with agent-owned-files-only rollback, commit hygiene, RefactoringMirror, 8-step Safe-Deletion Playbook), the reduce-nesting catalog, the hotspot precondition, OSS structural exemplars (Kubernetes, Django, FastAPI, React, Rust, Bazel), and references to Fowler / Feathers / Ousterhout / Tornhill / arXiv refactor studies. **Where PATCHES.md and any other file disagree, PATCHES.md wins.**
 >
-> **Trust the invoking context.** The user's message usually already states the project, the pain, and the appetite. If it does, accept those and proceed. Ask only for what you genuinely cannot infer; don't run a mechanical question round when intent is clear.
->
-> **The choice between staged behavior-preserving changes and a scoped rewrite follows from what Phase 1 reveals, not from policy.** Both are legitimate paths. Behavior preservation is the right call when the structure can support it; a scoped rewrite is the right call when the structure cannot. The user agrees the scope before either path begins.
+> **Trust the invoking context.** The user's message usually already states the project, the pain, and the appetite. If it does, accept those and proceed. Ask only for what you genuinely cannot infer; don't run a mechanical question round when intent is clear. (The staged-vs-rewrite choice — both legitimate — is decided from Phase 1 evidence; see Purpose below.)
 
 ---
 
@@ -61,6 +59,8 @@ When the evidence supports it, propose the deeper rewrite explicitly: scope, rat
 7. **Prefer boring, explicit, readable code** over clever abstractions.
 8. **Verify after each change** — tests, lint, typecheck ([PATCHES.md §11](PATCHES.md) tier order).
 9. **Any intentional behavior change requires explicit user approval** and lives in a clearly-scoped commit. This applies whether the work is staged refactor or scoped rewrite.
+10. **Don't treat static analysis as complete.** Name/import scans miss dynamic, decorator, framework, and test-only-reachable paths — verify before acting ([PATCHES.md §6](PATCHES.md), [§15](PATCHES.md)).
+11. **No style-only churn.** Every change resolves a named diagnostic from the map or call graph; cosmetic edits don't earn a commit.
 
 ---
 
@@ -162,23 +162,6 @@ The three structured outputs produced during the workflow each have a canonical 
 - **Phase 1 deliverable** — Architecture Recovery Report: see [templates/architecture_report.md](templates/architecture_report.md).
 - **Phase 6 deliverable** — Behavior-Preserving Refactor Plan: see [templates/refactor_plan.md](templates/refactor_plan.md).
 - **Post-stage deliverable** — Migration Stage Report (one per executed stage): see [templates/migration_stage_report.md](templates/migration_stage_report.md).
-
----
-
-## Agent Behavior Requirements
-
-When using this skill, the agent must:
-
-1. Be conservative.
-2. Be evidence-driven.
-3. Ask for approval before risky changes.
-4. Prefer staged migrations.
-5. Explain uncertainty.
-6. Avoid pretending static analysis is perfect.
-7. Avoid deleting files based on names only.
-8. Avoid large rewrites.
-9. Avoid style-only churn.
-10. Preserve behavior first.
 
 ---
 

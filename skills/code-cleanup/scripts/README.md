@@ -1,67 +1,39 @@
 # Scripts
 
-> **STATUS: roadmap only — none of the scripts listed below are implemented.**
-> This README is non-contractual. The skill does **not** rely on any of these
-> scripts existing. Treat the list as "what would be useful if someone wrote
-> them," not as "what the skill calls."
->
-> **Manual fallbacks** (use these instead of the unimplemented scripts):
->
-> | Roadmap script | Manual fallback |
-> |---|---|
-> | `find_entrypoints.py` | grep for `if __name__ == "__main__"`, `def main(`, `[project.scripts]` in `pyproject.toml`, `bin:` in `package.json`, `cmd/*/main.go` |
-> | `collect_imports.py` | `grep -rn "^import\|^from" --include='*.py'`; for graphs, install `pydeps` on demand |
-> | `classify_files.py` | LLM read-pass over module docstrings + directory names, classify by responsibility (see PATCHES.md §2) |
-> | `detect_dead_candidates.py` | install `vulture` (Python) / `knip` (JS-TS) on demand and follow PATCHES.md §6 Safe-Deletion Playbook |
-> | `generate_architecture_report.py` | hand-fill `templates/architecture_report.md` from grep + LSP "Find References" output |
+Two deterministic helpers are **implemented** and called by the workflow; the
+rest remain a roadmap (use the manual fallback). All scripts are stdlib-only and
+mark **candidates** — they never delete anything (see PATCHES.md §6).
 
-This folder can contain deterministic helper scripts used by the refactor skill.
+## Implemented
 
-Recommended scripts (NOT YET IMPLEMENTED):
+### `hotspots.py` — churn × size (PATCHES.md §4)
 
-## `find_entrypoints.py`
+```bash
+python scripts/hotspots.py [--root .] [--days 365] [--top 30]
+```
 
-Find likely runtime entry points:
+Ranks tracked files by commit churn × current LoC so you refactor the hotspots,
+not whatever file is in context. Git history only; language-agnostic.
 
-- `__main__.py`
-- CLI files
-- server files
-- scripts
-- package entry points
-- test entry points
+### `dead_candidates.py` — dead-code + test-only-orphan scanner (PATCHES.md §6, §15) — Python only
 
-## `collect_imports.py`
+```bash
+python scripts/dead_candidates.py [--root .] [--prod DIR ...] [--tests DIR ...] [--json out.json]
+```
 
-Collect import relationships and output:
+Lists top-level functions/classes that are `ZERO_REF` (never referenced) or
+`TEST_ONLY` (referenced only by tests — the class `vulture` and coverage both
+miss). **Pass your project's real source/test dirs** (from the Phase-1 map); omit
+them to auto-detect a `src`/`app`/`lib`/`source` layout or top-level packages
+(plus `scripts`/`tools`), which it prints. Candidates only; tags `DECORATED` /
+`PUBLIC` as likely false positives — verify each per §15.3 before removal. For
+non-Python repos, apply the §15.A method by hand (LSP "Find References", prod vs test).
 
-- module imports
-- imported-by map
-- high fan-in modules
-- high fan-out modules
-- possible cycles
+## Roadmap (not implemented — manual fallback)
 
-## `classify_files.py`
-
-Classify files by likely responsibility:
-
-- core
-- config
-- runtime
-- integration
-- evaluation
-- diagnostics
-- tests
-- scripts
-- generated
-- unknown
-
-## `detect_dead_candidates.py`
-
-Find files or symbols that may be unused.
-
-Important:
-The script must only mark candidates. It must not delete files.
-
-## `generate_architecture_report.py`
-
-Generate a Markdown architecture report from collected data.
+| Script | Manual fallback |
+|---|---|
+| `find_entrypoints.py` | grep for `if __name__ == "__main__"`, `def main(`, `[project.scripts]` in `pyproject.toml`, `bin:` in `package.json`, `cmd/*/main.go` |
+| `collect_imports.py` | `grep -rn "^import\|^from" --include='*.py'`; install `pydeps` on demand for graphs |
+| `classify_files.py` | LLM read-pass over module docstrings + directory names (PATCHES.md §2) |
+| `generate_architecture_report.py` | hand-fill `templates/architecture_report.md` from grep + LSP "Find References" |
