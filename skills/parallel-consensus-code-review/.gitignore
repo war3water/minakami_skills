@@ -1,0 +1,6 @@
+# Python bytecode cache — regenerable, never commit.
+__pycache__/
+*.py[cod]
+
+# Local review artifacts produced by the scripts (should never live in the skill source).
+_code_reviews_ai/
