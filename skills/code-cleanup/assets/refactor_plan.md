@@ -6,6 +6,13 @@
 
 ## Constraints
 
+## Net-Hop Target
+
+| Touched Feature | Meaningful Hops Before | Target After | Must Not Exceed |
+| --------------- | --------------------: | -----------: | --------------- |
+
+Every touched feature's meaningful-hop count after ≤ before. No permanent compatibility layers remain.
+
 ## Stage 0: Documentation Only
 
 ### Changes
@@ -36,13 +43,13 @@
 
 ### Verification
 
-## Stage 3: Low-Risk Moves
+## Stage 3: Low-Risk Moves (directness-first)
 
 ### Changes
 
 ### Files
 
-### Compatibility Wrappers
+### Fallbacks (only if consumers non-enumerable; with removal trigger)
 
 ### Risk
 
@@ -67,5 +74,9 @@
 ### Risk
 
 ### Verification
+
+## Stage 6: Retire Fallbacks
+
+### Compatibility layers removed
 
 ## Approval Required

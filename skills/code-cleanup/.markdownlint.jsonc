@@ -1,0 +1,18 @@
+{
+  // Lint config for this skill's own markdown (dev tooling — not loaded by the agent).
+  // Allowlist: enforce structure + correctness rules; stay silent on cosmetic style.
+  //
+  // MD060 (table-column-style) is intentionally OFF: it is a cosmetic table
+  // padding/alignment preference, markdownlint cannot auto-fix it, and enforcing it
+  // would require permanently hand-aligning every table cell across all files for
+  // zero functional gain. Rendering and agent behavior are unaffected by it.
+  "default": false,
+  "MD022": true,
+  "MD029": true,
+  "MD031": true,
+  "MD032": true,
+  "MD033": true,
+  "MD040": true,
+  "MD047": true,
+  "MD058": true
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Dead-code + test-only-orphan candidate scanner (PATCHES.md section 6 seed + section 15.A).
+"""Dead-code + test-only-orphan candidate scanner (references/techniques.md sections 8 and 9.A).
 
 PYTHON ONLY. Lists top-level functions / classes in the production source whose
 NAME is referenced only by tests, or not at all — the two classes that name/AST
@@ -7,22 +7,22 @@ tools (vulture) and runtime coverage both MISS:
 
   ZERO_REF   — name never referenced outside its own definition (vulture-class).
   TEST_ONLY  — referenced ONLY by tests: the tests exercise dead production code
-               (section 15.A). Coverage reports these as covered, so it never flags them.
+               (techniques.md section 9.A). Coverage reports these as covered, so it never flags them.
 
 CANDIDATES ONLY — deletes nothing. Name-based and biased toward LIVE (a shared
 name protects every same-named def), so it UNDER-reports. Verify each before
-removal (section 15.3 + section 6 step 2) — rule out decorator / registry /
+removal (techniques.md section 9 "verify, then delete" + section 8 step 2) — rule out decorator / registry /
 dynamic dispatch, __all__ / public surfaces, config-enabled paths. The
 DECORATED and PUBLIC tags flag likely false positives ("needs verification",
 not "delete").
 
 LAYOUT-AGNOSTIC. Pass your project's real source/test dirs (the agent knows them
-from the Phase-1 map) — that is the reliable path. If you omit them the script
+from the project map) — that is the reliable path. If you omit them the script
 AUTO-DETECTS: a src/app/lib/source layout, else top-level packages (dirs with
 __init__.py), else the whole repo; it always adds scripts/tools/bin as
 production, excludes tests + vendor dirs, and prints exactly what it scanned. It
 fails loud with guidance if it finds no source. For non-Python repos, apply the
-section 15.A method by hand (LSP "Find References", prod vs test).
+techniques.md section 9.A method by hand (LSP "Find References", prod vs test).
 
 Usage:
     python scripts/dead_candidates.py [--root .] [--prod DIR ...] [--tests DIR ...] [--json out.json]

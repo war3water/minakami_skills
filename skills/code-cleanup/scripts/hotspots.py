@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-"""Hotspot finder — churn x size, language-agnostic (PATCHES.md section 4).
+"""Hotspot finder — churn x size, language-agnostic (references/discovery.md, prioritization).
 
-Hotspots (files that change often AND are large) are where refactoring pays off;
-cold files are not, even when ugly. This ranks tracked files by commit churn over
-a window and cross-references current size (LoC, a cheap complexity proxy).
-Refactor the top of this list, not whatever happens to be in context.
+Ranks tracked files by commit churn over a window x current size (LoC, a cheap
+complexity proxy) to ORDER already-found problems by likely pain. Churn is a
+prioritization signal, NOT a gate: it never decides what to inspect and never
+filters out cold-code problems (dead weight and stale-but-wrong boundaries live
+in cold code). See references/discovery.md (prioritization).
 
 Usage:
     python scripts/hotspots.py [--root .] [--days 365] [--top 30]

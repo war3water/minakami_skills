@@ -1,181 +1,145 @@
 ---
 name: code-cleanup
-description: Refactors a messy, hard-to-maintain project so a maintainer can read, debug, and modify it quickly. Use when a codebase has unclear module boundaries, deep call nesting, dead/orphaned code, duplicated logic, circular imports, misplaced files, spaghetti dependencies, excessive indirection, technical debt, or onboarding-hostile structure. Triggers on phrases like "my code is messy", "pay down tech debt", "clean up", "reorganize", "modularize", "untangle the repo", "reduce nesting", "remove dead code", "improve maintainability", or "make debugging easier". Produces a project structure map, a maintainer-oriented call graph, a ranked refactor plan, and the execution itself — staged behavior-preserving changes or a scoped rewrite, chosen from what the Phase-1 map and call graph reveal, with the user's agreement on scope.
+description: Refactors a messy, hard-to-maintain project so a maintainer can read, debug, and modify it quickly. Use when a codebase has multi-hop indirection (a simple feature buried under wrappers, factories, registries, or deep nesting), unclear module boundaries, dead/orphaned code, duplicated logic, circular imports, misplaced files, spaghetti dependencies, stale or redundant files and tests, technical debt, or onboarding-hostile structure. Triggers on phrases like "my code is messy", "pay down tech debt", "clean up", "reorganize", "modularize", "untangle the repo", "reduce nesting", "remove dead code", "too many layers", "improve maintainability", or "make debugging easier". Produces a project structure map, a maintainer-oriented call graph with a hop audit, a ranked refactor plan, and the execution — staged behavior-preserving changes or a scoped rewrite, chosen from the evidence with the user's agreement on scope.
 ---
 
-> **Preamble**
->
-> **Goal:** make this project easy for a maintainer to read, debug, and modify. Concrete outputs are a project structure map, a maintainer-oriented call graph, a ranked refactor plan, and the execution itself.
->
-> **This SKILL.md is a navigation map.** Per-stage detail lives in the [phases/](phases/) subdirectory and loads only when the agent enters that stage. [PATCHES.md](PATCHES.md) in the same folder carries the evidence-based safety rules (revert-on-red with agent-owned-files-only rollback, commit hygiene, RefactoringMirror, 8-step Safe-Deletion Playbook), the reduce-nesting catalog, the hotspot precondition, OSS structural exemplars (Kubernetes, Django, FastAPI, React, Rust, Bazel), and references to Fowler / Feathers / Ousterhout / Tornhill / arXiv refactor studies. **Where PATCHES.md and any other file disagree, PATCHES.md wins.**
->
-> **Trust the invoking context.** The user's message usually already states the project, the pain, and the appetite. If it does, accept those and proceed. Ask only for what you genuinely cannot infer; don't run a mechanical question round when intent is clear. (The staged-vs-rewrite choice — both legitimate — is decided from Phase 1 evidence; see Purpose below.)
+# Code Cleanup
 
----
+Make a project easy for a maintainer to read, debug, and modify, while preserving behavior. The skill removes
+the maintainability problems that raise read-and-understand cost, in **two equally-important families** — a
+real cleanup usually does both, and neither is subordinate to the other:
 
-# Behavior-Preserving Project Refactor Skill
+- **Indirection that hurts tracing** — **multi-hop code** (a simple feature reachable only after layers that
+  add no clear meaning, whether scattered across files (inter-file) or buried in deep nesting in one file
+  (intra-file)) and **entry/wiring mixed into implementation** (so you can't find where execution begins).
+  Fixed by flattening unjustified hops and the composition-root pattern (wiring at the edges, pure core); the
+  call graph tags every node entry / wiring / domain / I/O to surface it.
+- **Dead weight and redundancy** — **dead / stale / orphaned code and files**, **duplicated or drifted
+  logic**, and **redundant or stale tests**. Found by reachability + data-flow sweeps and cross-entry
+  duplicate detection; removed via the Safe-Deletion Playbook (verified before removal, never on first
+  suspicion).
 
-## Purpose
+This SKILL.md is the **dispatcher**: it selects the mode, tells the agent exactly which reference files to
+load for each stage, and owns the principles and success criteria. The detailed procedures live in
+[references/](references/) and load on demand.
 
-Use this skill when a project is hard for a maintainer to read, debug, or modify — unclear module boundaries, deep call nesting, mixed responsibilities, dead-code candidates, duplicated logic, misplaced files, framework-convention ambiguity, or onboarding-hostile structure.
-
-**Goal:** make navigation and change easy — clear module boundaries, short call paths, predictable layout, no orphaned files.
-
-**Task — adapt to the situation, don't force any single playbook:**
-
-1. **Map** the project for a maintainer (Phase 1 produces a *project structure map* and a *maintainer-oriented call graph* — the two artifacts a new maintainer reads first).
-2. **Diagnose** what makes the project hard to navigate or change (Phases 2-4).
-3. **Plan** the smallest set of moves that resolves the diagnostic (Phase 5-6).
-4. **Execute** — staged behavior-preserving changes or a scoped rewrite, whichever the Phase 1 evidence supports. Both are legitimate paths; the user agrees the scope before either path begins.
-5. **Verify** after each step (tests / lint / typecheck, per PATCHES.md §11 tier order).
-
-**Choose staged refactor or scoped rewrite based on what the map and call graph reveal — not on policy or counts.**
-
-If Phase 1 shows the project is mostly navigable — recoverable boundaries, mostly-justified indirection, behavior worth preserving — staged refactor fits the evidence.
-
-If Phase 1's findings reveal **unnecessary and redundant structure** — indirection that doesn't earn its keep, the same logical operation expressed differently in multiple modules, boundaries that no longer match the domain, features whose flow requires stepping through chains of trivial forwarding — **a deeper refactor or scoped rewrite is the right answer, and staged is a trap.**
-
-These are diagnostic patterns to recognize through tracing the call graph and reading the map, not thresholds to count against. Look for:
-
-- **Indirection without a real best-practice driver** — no testing seam, no plugin / extension point, no layer boundary, no genuine reuse (see [PATCHES.md §2 Principle 2](PATCHES.md) for the justification gate). Layers that exist only because someone abstracted "in case" almost always need consolidating.
-- **Competing implementations** — the same concept expressed in different modules with different parameter shapes, error conventions, or return types. A sign the abstraction was never settled.
-- **Mismatched boundaries / shotgun surgery** — feature changes that require edits across unrelated-seeming directories. Module names no longer describe what lives inside them (see [PATCHES.md §2 Principle 1](PATCHES.md)).
-- **Team friction phrased structurally** — "I can't find where to change X", "I'm afraid to touch Y". A structure problem, not a style problem.
-
-When the evidence supports it, propose the deeper rewrite explicitly: scope, rationale, fallback plan, and what is preserved (behavior contracts, public API surfaces, data layouts). The choice is contextual, not a categorical preference.
+> **Trust the invoking context.** The user's message usually states the project, the pain, and the appetite.
+> Accept those and proceed; ask only for what you genuinely cannot infer. Don't run a mechanical question
+> round when intent is clear.
 
 ---
 
-## Core Principles
+## Intake — pick the mode
 
-1. **Primary outputs first.** Phase 1 produces two artifacts that guide every later decision:
-   - **Project structure map** — what each directory and major file is for.
-   - **Maintainer-oriented call graph** — for each user-facing feature and entry point, the path through the code.
-2. **Diagnose before refactoring.** Read the map and call graph before moving, deleting, or rewriting anything.
-3. **Staged behavior-preserving changes and scoped rewrites are both legitimate paths.** Choose based on what Phase 1 reveals — not policy. The user agrees the scope before either path begins (see Purpose).
-4. **Use evidence**, not file names or guesses — imports, call paths, tests, configs, entry points, runtime conventions.
-5. **Treat as high-risk:** dynamic imports, decorators, plugin registration, CLI entry points, framework conventions, reflection, generated code.
-6. **If usage is uncertain,** mark "needs verification" and resolve via [PATCHES.md §7](PATCHES.md) (batched yes/no with the user) — not by guessing or deleting.
-7. **Prefer boring, explicit, readable code** over clever abstractions.
-8. **Verify after each change** — tests, lint, typecheck ([PATCHES.md §11](PATCHES.md) tier order).
-9. **Any intentional behavior change requires explicit user approval** and lives in a clearly-scoped commit. This applies whether the work is staged refactor or scoped rewrite.
-10. **Don't treat static analysis as complete.** Name/import scans miss dynamic, decorator, framework, and test-only-reachable paths — verify before acting ([PATCHES.md §6](PATCHES.md), [§15](PATCHES.md)).
-11. **No style-only churn.** Every change resolves a named diagnostic from the map or call graph; cosmetic edits don't earn a commit.
+| Mode | When | Then |
+|---|---|---|
+| **Single-pass** | a targeted, scoped request ("inline this wrapper", "split `utils.py`", "this one feature is hard to trace") | run the relevant stage(s) once, report, stop |
+| **Campaign** | deep / exhaustive / whole-repo cleanup, a multi-objective brief, or "keep going" | establish a ledger + scope contract, then run the bounded loop — load [references/campaign-mode.md](references/campaign-mode.md) |
+| **Small project** (< ~30 source files) | the whole tree fits in one head | still do a full inventory first, then work the highest-value items; skip the heavy staging. Never one-change-at-a-time without a survey. |
+
+Recommend **plan-first** for anything macro: produce and agree the staged plan before editing, so the agent
+doesn't see "refactor" and start moving many files at once.
 
 ---
 
-## Resources
+## Loading manifest — what to load when (this solves the skill's own multi-hop)
 
-This skill ships supplementary files. Read them on demand:
+The agent learns the **complete** file set for a stage here and loads it in one batch. It never discovers a
+needed file by reading another file mid-procedure. Every reference is **one hop** from this file.
 
-- [phases/discovery.md](phases/discovery.md), [phases/diagnosis.md](phases/diagnosis.md), [phases/execution.md](phases/execution.md) — full specifications for the three workflow stages (Phases 0-1, Phases 2-4, Phases 5-6 plus Implementation Rules / Patterns / Approval Gates). The Required Workflow section below is a table of contents; phase detail lives in these three files and loads only when the agent enters the relevant stage.
-- [PATCHES.md](PATCHES.md) — evidence-based safety rules (revert-on-red with agent-owned-files-only rollback, commit hygiene, RefactoringMirror), the reduce-nesting technique catalog with "when NOT to flatten" caveats, the 8-step Safe-Deletion Playbook with tombstones, hotspot precondition, six reputable-OSS structural exemplars (Kubernetes / Django / FastAPI / React / Rust / Bazel), the glossary of professional problem categories, ecosystem-specific verification commands, the splitting and duplicate-merging playbooks, and references to Fowler / Feathers / Ousterhout / Tornhill / arXiv refactor studies. **Where PATCHES.md and this file (or any phase file) disagree, PATCHES.md wins.**
-- [templates/architecture_report.md](templates/architecture_report.md), [templates/refactor_plan.md](templates/refactor_plan.md), [templates/migration_stage_report.md](templates/migration_stage_report.md) — canonical output skeletons for Phase 1, Phase 6, and post-stage reports. Copy from these; do not regenerate from memory.
-- [scripts/README.md](scripts/README.md) — **roadmap only; no scripts are implemented.** The README contains manual-fallback procedures for each proposed script (entrypoint discovery, import collection, file classification, dead-code detection, report generation). Use the manual fallback unless and until the corresponding script lands.
+| Stage / trigger | Load (together, one hop) |
+|---|---|
+| Intake / mode selection | this file |
+| Discovery (map + call graph + hop audit) | [references/discovery.md](references/discovery.md) |
+| Diagnosis (classify, dependencies, name problems) | [references/diagnosis.md](references/diagnosis.md) + [references/techniques.md](references/techniques.md) |
+| Execution (target proposal, staged plan, patterns) | [references/execution.md](references/execution.md) + [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) + [references/architecture.md](references/architecture.md) |
+| Campaign mode | [references/campaign-mode.md](references/campaign-mode.md) + [references/safety.md](references/safety.md) |
+| Any deletion / dead-weight audit | [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
+| Optional enrichment (leaf — only if needed) | [references/glossary.md](references/glossary.md), [scripts/](scripts/), [assets/](assets/) |
 
----
+**Rule:** each reference file is **self-sufficient to execute its own procedure** — it may *cite* a companion
+(already loaded via this manifest) or an optional leaf, but it must never say "to proceed, now go read X."
+The execution spine is one hop; only optional enrichment may be deeper, and it is marked optional.
 
-## Professional Problem Categories
-
-When describing maintainability problems, use precise engineering vocabulary so the diagnosis is shared and the remediation is searchable. The full glossary — architectural erosion, technical debt, unclear module boundaries, poor code navigability, high cognitive load, poor change locality, spaghetti dependencies, excessive indirection, deep nesting, hidden side effects, dead code candidates, orphaned files, duplicate logic, circular dependencies, weak ownership boundaries, framework-convention ambiguity, onboarding-hostile structure, shotgun surgery risk — is documented in [PATCHES.md §13 Glossary](PATCHES.md).
-
----
-
-## Required Workflow
-
-The workflow has three stages, each specified in its own file under [phases/](phases/). Read the phase file when entering that stage; the summaries below let you pick which stage applies. Cross-references go from each phase file directly to PATCHES.md (one-hop rule); phase files do not reference each other — workflow ordering lives only here.
-
-### Discovery — Phase 0 (Safety Preparation) + Phase 1 (Project Map & Call Graph)
-
-Identify the project's language, framework, build / test / lint commands, entry points, config, and framework conventions (Phase 0). Then produce the two artifacts a maintainer reads first: a **project structure map** (what each directory and major file is for — answering where the program starts, where features live, what each top-level directory means, and what is auto-loaded by framework conventions) and a **maintainer-oriented call graph** (shallow trace per user-facing feature, with the "do not multiply entities beyond necessity" justification gate applied to every jump). These artifacts are standalone deliverables and feed every later decision. Calibrate call-graph depth by studying real OSS exemplars (FastAPI / requests / Pydantic / tokio for shallow composition; Django / grpc-go / Kubernetes / Abseil for framework-required depth) — there is no universal "right depth."
-
-**Read [phases/discovery.md](phases/discovery.md) for the full specification, including the PATCHES guards (§1 first-impression test, §4 hotspot precondition, §8 small-project fast path) and the OSS calibration references.**
-
-### Diagnosis — Phase 2 (File Classification) + Phase 3 (Dependency Analysis) + Phase 4 (Maintainability Diagnosis)
-
-Classify files into a table with Risk Level and Recommended Action (keep / rename / move / split / merge / simplify / delete / needs-verification / do-not-touch-without-tests), with marking discipline for dynamic-load and framework-convention risks. Build a dependency and call-path map: entry-point traces, fan-in / fan-out, circular dependencies, deep chains, overly-broad utilities, files that mix responsibilities. Diagnose maintainability issues across 15 categories (architecture erosion, excessive nesting, hidden side effects, duplicate logic, dead code, misleading names, etc.), with per-issue evidence and recommended action.
-
-**Read [phases/diagnosis.md](phases/diagnosis.md) for the full specification, including the Phase 2 decision table and the PATCHES guards (§10 OSS exemplars for Recommended Location, §2 design principles for Recommended Action, §5 reduce-nesting catalog for deep chains, §6 safe-deletion playbook for delete candidates, §7 needs-verification loop for ambiguous items).**
-
-### Execution — Phase 5 (Target Proposal) + Phase 6 (Staged Plan) + Implementation Rules + Common Refactor Patterns + Approval Gates
-
-Propose a target architecture mirrored on a specific [PATCHES.md §10](PATCHES.md) OSS exemplar (no universal layout — cite which one you mirror and why). Then create a staged plan: Stage 0 documentation-only → Stage 1 static-analysis tooling → Stage 2 architecture boundary rules → Stage 3 low-risk file moves → Stage 4 medium-risk reorganization → Stage 5 core refactor → Stage 6 wrapper cleanup. Apply the 14 Implementation Rules during stage execution; consult the five Common Refactor Patterns (Root-Level Module Grouping, Compatibility Move, Boundary Enforcement, Replace Hidden Flow, Reduce Shotgun Surgery) for canonical moves; respect the 10 User Approval Gates for any change that touches public surface, deletion, schema, or plugin systems.
-
-**Read [phases/execution.md](phases/execution.md) for the full specification, including the PATCHES guards (§3 hard safety rules with agent-owned-files-only rollback, §9 macro-vs-micro with Mikado discipline, §10 OSS exemplars for the target tree) and the full Stage 0-6 contract.**
+Output templates live in [assets/](assets/) — copy from them, don't regenerate from memory:
+`architecture_report.md` (discovery), `refactor_plan.md` (plan), `migration_stage_report.md` (per stage),
+`cleanup_ledger.md` (campaign). These are **blank, read-only skeletons with no project data.** Write every
+*filled* report, plan, or ledger into a **skill-named agent-work directory in the target project** — default
+`.agent_works/code-cleanup/` (namespacing by skill name avoids collisions with other agents sharing
+`.agent_works/`; fall back to a user-named path if it can't be created or conflicts). The live ledger is a
+tracked `.agent_works/code-cleanup/CLEANUP_LEDGER.md` (repo root only if the user wants it highly visible).
+**Do not** drop these
+into the project's source tree, core code, or its existing `docs/` structure — that pollutes or breaks the
+project's own layout. And **never write project data, logs, or filled outputs back into this skill folder** —
+the skill is immutable at runtime; contaminating it would pollute every future run on every other project.
 
 ---
 
-## Compatibility Wrapper Pattern
+## Core principles
 
-This pattern is cross-cutting — both staged moves and scoped rewrites use it — so it lives in SKILL.md rather than in a phase file.
+1. **Primary outputs first.** Discovery produces the two artifacts a maintainer reads first — a project
+   structure map and a call graph with a per-hop audit. They guide every later decision.
+2. **Diagnose before refactoring.** Read the map and call graph before moving, deleting, or rewriting.
+3. **Every layer must earn its existence.** Default to flat composition. A hop (function, class, file,
+   branch) is kept only if it is a real boundary, adds validation/transformation/orchestration/error
+   handling, encapsulates an external dependency, gives a genuine test seam or reuse, or makes the code
+   easier to understand than calling directly. Otherwise it's a candidate to inline or merge — judged in
+context, not removed on pattern-match. **This gate applies to your own
+   edits too** — agents over-produce indirection; don't add a layer the project didn't ask for. Judge it
+   **globally, not in isolation** — sweep all public entrypoints for parallel/duplicate entries (two public
+   entries → one impl; a registry/factory → one impl), since a hop that looks justified locally can be a 1:1
+   duplicate of another entry.
+4. **Directness-first; no permanent fallbacks.** When callers are fully enumerable, move code and update all
+   callers atomically — land clean, no wrapper. A compatibility layer is a bounded exception (non-enumerable
+   consumers only), tracked to removal. A permanent "temporary" wrapper is a new permanent hop — a failure.
+5. **Use evidence**, not file names or guesses — imports, call paths, tests, configs, entry points, runtime
+   conventions. Static analysis is not complete: dynamic imports, decorators, reflection, and
+   framework/plugin paths are invisible to it — verify before acting.
+6. **Clear classification, specific names.** One nameable responsibility per module; avoid vague
+   `manager` / `handler` / `processor` / `utils` / `common` unless the job is specific and documented.
+7. **Local conventions first; smallest move-set.** Honor the project's and its framework's own conventions;
+   use an OSS exemplar only as a fallback, and cite it. Prefer the fewest moves that resolve the diagnostic.
+8. **Risk-tiered safety.** Low (reversible) → proceed; medium → proceed with verification; high
+   (irreversible / outward-facing) → checkpoint with the user. Verify after each change; revert-on-red.
+9. **Behavior change needs explicit approval.** One logical change per boundary — no tangling refactor with
+   features or fixes. Commit only when the user asks.
+10. **No style-only churn.** Every change resolves a named diagnostic from the map or call graph.
 
-When moving a module from an old path to a new path, keep a temporary wrapper if external usage is uncertain.
-
-Example:
-
-```python
-"""
-Compatibility wrapper for old import path.
-
-Old:
-    import project.benchmark
-
-New:
-    import project.evaluation.benchmark
-
-This wrapper should be removed only after external usage is verified.
-"""
-
-from project.evaluation.benchmark import *  # noqa: F401,F403
-```
-
-Rules:
-
-1. Use wrappers only as temporary migration aids.
-2. Mark them clearly.
-3. Track them in the migration report.
-4. Remove them only after approval.
-5. When updating callers, prefer the IDE's LSP rename / move-symbol command over `grep + replace` — grep misses string-name references like decorators, plugin registries, and test-discovery globs, which are exactly the high-risk surfaces flagged in [PATCHES.md §3](PATCHES.md).
-
----
-
-## Verification Rules
-
-After each stage, run available checks in this tier order: project-native commands first (whatever `Makefile`, `pyproject.toml`, `package.json`, `Cargo.toml`, etc. defines under `test`, `lint`, `typecheck`), then language built-ins (`python -m compileall`, `tsc --noEmit`, `go vet`, `cargo check`), then optional external analyzers only if they're already installed (`vulture`, `pydeps`, `knip`, `madge`, etc.). The full per-ecosystem command list and the optional-analyzer catalog are in [PATCHES.md §11](PATCHES.md).
-
-**For ecosystems not enumerated in the catalog (Haskell, Elixir, Clojure, C / C++, Swift, Kotlin / Multiplatform, Zig, Nim, Crystal, Erlang, etc.):** consult the project's own build manifest and run that ecosystem's native test / lint / typecheck commands. If the ecosystem is unfamiliar, search the project's `README`, `CONTRIBUTING.md`, or `docs/` for the documented commands before guessing. When still unsure, ask the user — the verification commands they run locally are the most reliable source.
-
-If a documented command is unavailable in the environment, report that clearly and suggest how to install or configure it; do not silently skip the verification step.
+Full safety contract: [references/safety.md](references/safety.md). The vocabulary for naming problems:
+[references/glossary.md](references/glossary.md).
 
 ---
 
-## Recommended Tools
+## Minimal workflow
 
-Pick analyzers and visualization tools that fit the project's language; do not install everything by default. The full per-language catalog (linters, dependency graphers, dead-code detectors, architecture-boundary enforcement, static call-graph generation) is in [PATCHES.md §14](PATCHES.md). For any ecosystem, the language-server "Find References" + `git grep` / `ripgrep` cover most of what the analyzers do, more reliably and without setup cost.
+1. **Discovery** — language/framework/build/test commands, entry points, conventions; then the structure map
+   and the call-graph hop audit (classify each hop KEEP / MERGE / DELETE / RENAME / MOVE / TEST FIRST).
+2. **Diagnosis** — classify files, map dependencies, name the maintainability issues (multi-hop, entry-vs-
+   implementation mixing, duplication, dead code, …) with per-issue evidence.
+3. **Execution** — propose a target (local-first), plan the smallest staged set of moves, execute behavior-
+   preservingly with verification — staged refactor or, when the evidence supports it, a scoped rewrite the
+   user has agreed to. Campaign mode runs this as a continuous ledger-driven loop.
+
+Staged refactor and scoped rewrite are both legitimate; choose from what the map and call graph reveal, with
+the user's agreement on scope. Deep rewrite is the right answer when the structure is unnecessary and
+redundant (indirection that doesn't earn its keep, competing implementations, boundaries that no longer
+match the domain); staged is the trap there.
 
 ---
 
-## Output Format Reports
-
-The three structured outputs produced during the workflow each have a canonical template in the `templates/` directory. Copy from these files when emitting a report; do not regenerate the skeleton from memory.
-
-- **Phase 1 deliverable** — Architecture Recovery Report: see [templates/architecture_report.md](templates/architecture_report.md).
-- **Phase 6 deliverable** — Behavior-Preserving Refactor Plan: see [templates/refactor_plan.md](templates/refactor_plan.md).
-- **Post-stage deliverable** — Migration Stage Report (one per executed stage): see [templates/migration_stage_report.md](templates/migration_stage_report.md).
-
----
-
-## Final Success Criteria
+## Success criteria
 
 The refactor is successful only if:
 
-1. The project has a clear architecture map.
-2. Entry points are documented.
-3. Major call paths are understandable.
-4. Module responsibilities are clear.
-5. Debugging requires less cross-file jumping.
-6. Dead-code candidates are verified before removal.
-7. Architecture rules prevent future erosion.
-8. Behavior is preserved.
-9. Tests / lint / build pass or failures are clearly explained.
-10. Future maintainers can quickly find where to add or fix functionality.
+1. The project has a clear structure map and documented entry points.
+2. Major call paths are understandable; entry/wiring is separated from domain logic, so a maintainer can see
+   where execution begins and debugging requires less cross-file jumping.
+3. **Every touched feature's meaningful-hop count after ≤ before** (multi-hop reduced, not relocated).
+4. **No orphaned compatibility layers remain** (no permanent "temporary" wrappers).
+5. Module responsibilities and names are clear.
+6. Dead / stale / orphaned code and files, duplicated logic, and redundant tests were removed — each verified
+   before removal (never on first suspicion).
+7. Behavior is preserved and verified against the project's end-to-end / golden cases — a green unit suite is
+   a signal, not proof of correct structure; stale, structure-coupled tests were updated or removed with a
+   reason, never used to preserve redundant structure.
+8. Future maintainers can quickly find where to add or fix functionality.
