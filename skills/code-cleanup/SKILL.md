@@ -97,8 +97,11 @@ context, not removed on pattern-match. **This gate applies to your own
    framework/plugin paths are invisible to it — verify before acting.
 6. **Clear classification, specific names.** One nameable responsibility per module; avoid vague
    `manager` / `handler` / `processor` / `utils` / `common` unless the job is specific and documented.
-7. **Local conventions first; smallest move-set.** Honor the project's and its framework's own conventions;
-   use an OSS exemplar only as a fallback, and cite it. Prefer the fewest moves that resolve the diagnostic.
+7. **Local conventions first; smallest move-set that resolves the diagnostic.** Honor the project's and its
+   framework's own conventions where a *sensible* convention exists — existing chaos is not a convention.
+   When there is none, or the user asks to reconstruct toward a clearer structure, a full evidence-derived
+   regroup mirrored on an OSS exemplar (cited) is the right-sized move: "smallest" bounds scope creep, it
+   does not cap a reconstruction the diagnostic actually requires.
 8. **Risk-tiered safety.** Low (reversible) → proceed; medium → proceed with verification; high
    (irreversible / outward-facing) → checkpoint with the user. Verify after each change; revert-on-red.
 9. **Behavior change needs explicit approval.** One logical change per boundary — no tangling refactor with

@@ -14,13 +14,35 @@ Propose a target structure; do **not** implement it yet.
 project's domain and its framework's official documented conventions. Honor the project's own established
 patterns where they exist. Only when the project has no clear convention, mirror a reputable OSS exemplar
 (`architecture.md`) — and cite which one and why. Do not impose a novel layout, and do not override a
-sensible local convention with an external exemplar.
+sensible local convention with an external exemplar. **Existing chaos is not a convention** — random placement
+with no ownership rule *is* the no-convention case. And when the user explicitly asks to reconstruct toward a
+clearer, more intuitive structure, that ask sets the diagnostic: the smallest move-set that resolves it is the
+full regroup (staged, approved, executed directness-first) — do not shrink a requested reconstruction out of
+churn-aversion.
 
 The proposal must include: target directory tree; old→new path mapping; rationale per package; the
 directness-first migration strategy (atomic caller updates; a bounded fallback only where consumers are
 non-enumerable — `techniques.md` §4); test strategy; rollback strategy; risk tier per move (`safety.md`);
 approval requirement per stage. Pick the **smallest move-set that resolves the diagnostic** (Occam) — a
 300-move "complete refactor" is rarely right; a 5-move "biggest pain point" usually is.
+
+**Deriving the target tree (when reconstruction is in scope).** There is no universal right layout — the
+exemplar provides the *idiom*, the project's own evidence provides the *content*:
+
+1. **Layers from node tags** — the discovery call graph's entry / wiring / domain / I/O tags define the
+   top-level split: entrypoints + wiring at the edges, pure domain core, I/O adapters at the boundary
+   (composition root).
+2. **Modules from cohesion clusters** — co-call, shared-vocabulary, and co-change clusters (`techniques.md`
+   §6) name the directories; each directory gets one specific, nameable responsibility (no
+   `manager`/`utils`/`common`).
+3. **Idiom from the archetype** — pick the `architecture.md` exemplar matching the project's archetype (Go
+   service → `cmd/pkg/internal`; Python web app → per-app; library → single import surface; monorepo →
+   packages) and adopt its naming and nesting conventions; cite it.
+4. **Validate every directory against the gates** — each level must earn its existence (a directory holding
+   one file, or existing only to forward, fails); names specific; import direction declared one-way
+   (Pattern 3) and enforced in Stage 2.
+5. **Right-size the depth** — the fewest directory levels the real module count requires; never pre-create
+   empty layers for a future that may not come.
 
 Illustrative shape for a mid-size service (treat as example, not prescription — adapt to the project):
 
