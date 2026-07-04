@@ -151,5 +151,11 @@ After a structural refactor, also **smoke-test documented extension paths** (a R
 plugin, a config-enableable feature): docs promise them to users, and the unit suite usually doesn't cover
 them.
 
+**Proportionality — don't buy insurance twice.** If the project already has a green behavior net (test
+suite, golden commands), *reuse it* as the bar; build extra characterization cases only for behavior the
+net demonstrably doesn't cover (extension paths, deleted-symbol call sites). Building a parallel net next
+to a working one is cost without protection. Report depth follows the same rule: length tracks risk tier,
+not effort — low-tier changes get one line each, not a section.
+
 Consult the project manifest for its native commands; use the language's idiomatic test/lint/typecheck
 commands otherwise, and ask the user if conventions are unfamiliar.
