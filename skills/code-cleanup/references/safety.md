@@ -27,6 +27,11 @@ Every change is one of three tiers; the tier sets whether the agent may proceed 
 "Reversible with a `git checkout`" is the rough test for low; "changes a contract a consumer can observe"
 pushes it to high. When unsure of the tier, treat as the higher one.
 
+**High-tier with no reachable user** (headless / batch / "don't ask" runs): the checkpoint cannot happen,
+so the action doesn't either — **keep the item and flag it in the report** with the evidence and the exact
+question you would have asked. Making a change recoverable (backup copy, verbatim restore block) does not
+convert a high-tier action into a lower tier; per the SKILL.md Deletion gates, recoverable ≠ authorized.
+
 ---
 
 ## 2. Hard safety rules (always)

@@ -121,7 +121,12 @@ layer worse.
 
 ## 6. Safe-Deletion Playbook
 
-**All eight steps required before any hard delete.** Deletion is high-tier (`safety.md`).
+**All eight steps required before any hard delete.** Deletion is high-tier (`safety.md`). Approval
+semantics are owned by the **Deletion gates in SKILL.md**: approval-tier items (documented extension
+points, outward-facing shims/re-exports, config-reachable registrations, and their pinning tests) need the
+user's explicit per-item confirmation, and **when no user is reachable the disposition is keep + flag —
+delete-with-backup is not a substitute for approval.** This playbook is the *procedure* for items the
+gates have cleared.
 
 1. **Establish suspect set** via static tooling (`vulture` / Knip; Python: `scripts/dead_candidates.py`
    flags TEST_ONLY orphans + ZERO_REF). Treat as *suspects*, not a delete list.

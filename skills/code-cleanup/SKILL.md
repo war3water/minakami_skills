@@ -114,6 +114,29 @@ Full safety contract: [references/safety.md](references/safety.md). The vocabula
 
 ---
 
+## Deletion gates — binding at every stage; these override every other consideration
+
+A deletion target is **approval-tier** if it is any of: an extension point documented anywhere (README,
+docs, comments, example configs) even if currently unwired; an outward-facing surface — a compatibility
+shim, re-export, or entry point whose consumers may live **outside this repo** ("zero in-tree references"
+says nothing about out-of-tree consumers); a registered plugin / stage / handler reachable by configuration;
+or a test pinning any of the above.
+
+- Approval-tier deletion requires the user's explicit confirmation **for that item**.
+- **No reachable user = no approval.** The default disposition is **keep + flag in the report** with the
+  evidence and the question you would have asked. A backup copy, a verbatim restore block, or
+  zero-reference evidence is **not a substitute for approval** — it makes the mistake recoverable, not
+  authorized.
+- Never justify a deletion with this skill's own vocabulary ("permanent temporary wrapper",
+  "violates directness-first"). The skill's rules *nominate* candidates; only verification evidence plus
+  approval retires one.
+
+Everything below approval-tier (proven data-flow-dead branches, zero-reference private code, exact
+duplicates) follows the Safe-Deletion Playbook procedure in
+[references/techniques.md](references/techniques.md).
+
+---
+
 ## Minimal workflow
 
 1. **Discovery** — language/framework/build/test commands, entry points, conventions; then the structure map
@@ -122,7 +145,9 @@ Full safety contract: [references/safety.md](references/safety.md). The vocabula
    implementation mixing, duplication, dead code, …) with per-issue evidence.
 3. **Execution** — propose a target (local-first), plan the smallest staged set of moves, execute behavior-
    preservingly with verification — staged refactor or, when the evidence supports it, a scoped rewrite the
-   user has agreed to. Campaign mode runs this as a continuous ledger-driven loop.
+   user has agreed to. **If the project has no test suite or goldens, build the behavior net first** —
+   capture the output of every documented command *before* the first edit and re-verify against it after.
+   Campaign mode runs this as a continuous ledger-driven loop.
 
 Deep rewrite is the right answer when the structure is unnecessary and
 redundant (indirection that doesn't earn its keep, competing implementations, boundaries that no longer
