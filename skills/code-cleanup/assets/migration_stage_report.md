@@ -1,5 +1,8 @@
 # Migration Stage Report
 
+Fill sections that apply; omit empty ones. Always state Compatibility Layers explicitly ("none — landed
+directness-first" when clean) and always fill Verification Results and Golden / End-to-End Acceptance.
+
 ## Stage
 
 ## Summary

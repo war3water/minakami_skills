@@ -11,15 +11,13 @@ Each term is a recognized diagnosis with a remediation path, not a generic compl
 
 | Term | Meaning | Typical remediation |
 |---|---|---|
-| **Multi-hop code** | A simple feature is reachable only after layers that add no clear meaning — inter-file (scattered call chain) or intra-file (deep nesting / forwarding). | `techniques.md`: every layer earns its existence; directness-first; reduce-nesting catalog. |
+| **Multi-hop code** | A simple feature is reachable only after layers that add no clear meaning — inter-file (scattered call chain) or intra-file (deep nesting / forwarding). | `techniques.md`: every layer earns its existence; directness-first. |
 | **Architectural erosion** | Implemented architecture has drifted from intended; boundaries leak. | Re-establish boundaries via import-linter / dependency-cruiser; enforce in CI. |
-| **Technical debt** | Shortcuts under time pressure that compound change cost. | Prioritized cleanup; one debt item per change boundary. |
 | **Unclear module boundaries** | Module names no longer describe contents; responsibilities overlap. | Match a layout (local-first); move files in low-risk batches. |
 | **Poor code navigability** | A maintainer can't quickly find where a feature lives. | Map + call graph; flatten unjustified indirection. |
 | **High cognitive load** | Reading one feature requires holding many unrelated concepts. | Inline shallow wrappers; split mixed-responsibility files. |
 | **Poor change locality** | A small change requires editing many files. | Find the missing abstraction / misplaced responsibility; consolidate. |
 | **Spaghetti dependencies** | Modules import each other across unrelated domains. | Break cycles via Branch by Abstraction; add boundary rules. |
-| **Excessive indirection** | Many layers between call site and work. | Reduce-nesting catalog; inline pass-throughs. |
 | **Deep nesting** | Control-flow nesting in one function, or call-graph nesting across files. | Early returns (intra-file); inline wrappers (cross-file). |
 | **Hidden side effects** | Calls mutate state or do I/O not obvious from name/signature. | Rename to surface; isolate; document at the call site. |
 | **Entry-vs-implementation mixing** | Business logic in the entry/wiring layer, or wiring scattered through domain code. | Composition root — wiring at the edges, pure core. |

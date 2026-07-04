@@ -74,7 +74,7 @@ Expected hops: 3
 Classify each hop:
 
 ```text
-KEEP       meaningful boundary (earns its existence — techniques.md §2)
+KEEP       meaningful boundary (earns its existence — techniques.md §1)
 MERGE      thin wrapper / overlapping responsibility
 DELETE     unused / dead layer
 RENAME     vague responsibility (manager/handler/utils with no specific job)
@@ -82,11 +82,11 @@ MOVE       wrong module / folder location
 TEST FIRST risky behavior with no coverage — characterize before touching
 ```
 
-**Justification gate** (per `techniques.md` §2): every hop must be a testing seam, a plugin/extension point,
+**Justification gate** (per `techniques.md` §1): every hop must be a testing seam, a plugin/extension point,
 a layer boundary a checker enforces, or genuine reuse. A hop that fails the gate is shallow indirection — a
 `MERGE`/`DELETE` candidate for diagnosis. Record actual vs meaningful hop count as a **measurement, not a
-target** — minimize hops and keep only the justified ones (`techniques.md` §3); the right number is whatever
-the feature's real boundaries, seams, and reuse require, no more. Tag each node
+target** — the right number is whatever the feature's real boundaries, seams, and reuse require
+(`techniques.md` §2). Tag each node
 **entry / wiring / domain / I/O** so "business logic in the entry layer" or "wiring scattered through domain
 code" surfaces as a finding.
 
@@ -94,14 +94,13 @@ code" surfaces as a finding.
 *cross-entry duplication* you cannot see from one feature: two public entries delegating to the same impl, or a
 registry / factory resolving to a single effective impl on the hot path. A hop that passes the justification
 gate locally can still be globally redundant — for each, also ask "does another public entry already do this?"
-(`techniques.md` §7). Produce a before/after call-path per candidate (format above).
+(`techniques.md` §5). Produce a before/after call-path per candidate (format above).
 
-Also note (feeds the dependency analysis in `diagnosis.md`): high fan-in / fan-out files, circular dependencies, cross-domain imports, deep
-chains, overly broad utilities, files that mix responsibilities. If static call-graph accuracy is uncertain,
-say so.
+Also note dependency signals for `diagnosis.md`'s dependency analysis (fan-in/out, cycles, cross-domain
+imports, deep chains, mixed responsibilities), and flag if static call-graph accuracy is uncertain.
 
 These artifacts are standalone deliverables — present them, or write them to the agent-work directory (per
-SKILL.md). They feed every later decision.
+SKILL.md).
 
 ---
 
@@ -112,14 +111,13 @@ concentrated?" — not "where are the design problems?" Inherent problems are of
 god-module nobody dares touch, dead code in cold corners, stable-but-wrong boundaries.
 
 - **Discovery is git-independent and whole-tree** — the map, the call-graph hop audit, the reachability /
-  data-flow sweep (`techniques.md` §9), and the design checks find the problems.
+  data-flow sweep (`techniques.md` §7), and the design checks find the problems.
 - **Prioritization uses churn as one input, never a gate.** `scripts/hotspots.py` (churn × LoC) *orders*
   already-found problems so limited effort hits the highest-pain ones first. Churn never filters a cold-code
-  problem out of the worklist. (Tornhill/CodeScene: 2–3% of files attract 11–16% of commits — useful for
-  ordering, not for deciding what to inspect.)
+  problem out of the worklist. (Tornhill/CodeScene: 2–3% of files attract 11–16% of commits.)
 - **History edge cases never degrade discovery.** Fresh import, squashed history, shallow clone, vendored
   subtree, or a monorepo path may have little `git log`; structure discovery runs unchanged and orders by
   LoC × complexity × fan-in. On a very long history, time-box the churn window (e.g. 365 days).
 
 For an **exhaustive dead-weight audit**, waive churn ordering entirely and sweep the whole tree
-(`techniques.md` §9).
+(`techniques.md` §7).

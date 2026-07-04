@@ -9,8 +9,7 @@ with `safety.md` when the user requests a deep / ongoing cleanup. Self-contained
 
 ## 1. When campaign mode applies
 
-SKILL.md's intake selects campaign mode for a deep / exhaustive / whole-repo request, a multi-objective
-brief, or an explicit "keep going" — then establishes a ledger + scope contract and runs the loop in §3 to
+Selected at intake (SKILL.md); establish the ledger + scope contract, then run the loop in §3 to
 convergence. A multi-objective brief is decomposed at intake: each objective (docs, dead code, deprecated
 files, test consolidation, modularity) becomes one or more ledger items. In campaign mode the hotspot
 *narrowing* is waived — the loop drives toward full coverage (§2), with churn used only to order work
@@ -25,8 +24,7 @@ files, test consolidation, modularity) becomes one or more ledger items. In camp
 2. **Progressive deep coverage tracked in the ledger** — begin with the highest-value files, but record every
    file's review state so "what has not yet been deeply reviewed" is always explicit.
 
-Start narrow; never stay narrow silently. Problems are found by reading the repo, not git logs
-(`discovery.md` — structure-first, git only orders).
+Start narrow; never stay narrow silently (structure-first, git only orders — `discovery.md`).
 
 ---
 
@@ -76,10 +74,9 @@ safe increment, and reconsider it in the next round's SURVEY. Do not follow the 
 
 The durable record; a fresh session reads it and resumes without prior context.
 
-- **Storage:** a tracked `CLEANUP_LEDGER.md` in a skill-named agent-work directory (default `.agent_works/code-cleanup/`, kept out of the project's core code and `docs/`; repo root only if the user wants it highly visible) for campaign work on medium/large repos
-  (survives sessions, reviewable in diffs; commit it only when the user asks — `safety.md`). Small repos use a lightweight in-conversation backlog instead, to
-  avoid adding a tracking file to a tiny tree. This is purely *where the ledger is stored* — unrelated to the
-  analysis method.
+- **Storage:** a tracked `CLEANUP_LEDGER.md` in the agent-work directory (location + placement rules:
+  SKILL.md loading-manifest section; commit only when the user asks). Small repos use a lightweight
+  in-conversation backlog instead of adding a tracking file to a tiny tree.
 - **Format:** Markdown. Skeleton in `assets/cleanup_ledger.md` — copy from it.
 - **Status lifecycle:** `proposed → approved → in-progress → done`; deletes pass through `soaking` (§8);
   `rejected` (evidence insufficient / duplication intentional); `parked` (out-of-scope, revisited in SURVEY).
@@ -88,10 +85,7 @@ The durable record; a fresh session reads it and resumes without prior context.
 
 ## 7. Safety invariants
 
-Campaign mode adds no new safety surface; it applies `safety.md` per item, every round: revert-on-red
-(agent-owned-files rollback); one logical change per boundary, no tangling; deterministic engine performs
-the edit; verify between items; macro work as a Mikado graph, one leaf at a time; directness-first with no
-permanent fallbacks.
+Campaign mode adds no new safety surface: apply `safety.md` in full, per item, every round.
 
 ---
 
@@ -99,10 +93,10 @@ permanent fallbacks.
 
 Continuation is what makes safe deletion executable; a single pass cannot tombstone-then-delete.
 
-- A delete candidate enters `soaking`: tombstone the symbol or file (`techniques.md` §8 step 5) in round *N*.
+- A delete candidate enters `soaking`: tombstone the symbol or file (`techniques.md` §6 step 5) in round *N*.
 - Hard-delete only in a later round, after a re-survey surfaces no consumer.
 - Soak is measured by **tombstone + one later-round confirmation**, not wall-clock — an engagement has no
-  release cadence. The full Safe-Deletion Playbook (`techniques.md` §8) still governs each deletion.
+  release cadence. The full Safe-Deletion Playbook (`techniques.md` §6) still governs each deletion.
 
 ---
 

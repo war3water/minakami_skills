@@ -21,11 +21,11 @@ Classify important files in a table:
 |---|---|
 | **keep** | actively imported, an entry point, framework-loaded, public API, or plugin-registered; role clear and stable. |
 | **rename** | the name doesn't reflect responsibility (vague `manager`/`handler`/`utils`), but it's otherwise in the right place doing the right thing. |
-| **move** | responsibility is clear but belongs in a different package; caller updates are mechanical (directness-first, `techniques.md` §4). |
-| **split** | mixes unrelated responsibilities, multiple independent clusters, a debugging hotspot, or high fan-out with low cohesion (`techniques.md` §6). |
+| **move** | responsibility is clear but belongs in a different package; caller updates are mechanical (directness-first, `techniques.md` §3). |
+| **split** | mixes unrelated responsibilities, multiple independent clusters, a debugging hotspot, or high fan-out with low cohesion (`techniques.md` §5). |
 | **merge** | a thin wrapper / several tiny files create indirection without real meaning; maintainers jump across files for one concept. |
-| **simplify** | responsibility is correct but the implementation is excessively nested or indirected (`techniques.md` §5). |
-| **delete** | not imported, not referenced in production, not dynamically loaded, not a framework convention, not public, and not exercised by a behavioral test of a live feature — and the user approves. (A symbol referenced *only* by its own tests is a test-only orphan: removable with its tests, `techniques.md` §9.) The Safe-Deletion Playbook (`techniques.md` §8) governs. |
+| **simplify** | responsibility is correct but the implementation is excessively nested or indirected (`techniques.md` §1–§2, checked against §4). |
+| **delete** | not imported, not referenced in production, not dynamically loaded, not a framework convention, not public, and not exercised by a behavioral test of a live feature — and the user approves. (A symbol referenced *only* by its own tests is a test-only orphan: removable with its tests, `techniques.md` §7.) The Safe-Deletion Playbook (`techniques.md` §6) governs. |
 | **needs verification** | static analysis is inconclusive; dynamic import / decorator / reflection / external use possible. Resolve via the loop below, batched — not by guessing. |
 | **do not touch without tests** | risky and uncovered; consumer surfaces unclear. Add characterization tests (Feathers) before any change. |
 
@@ -48,9 +48,9 @@ core   imports: config, events, models     imported by: app, eval, runtime
 eval   imports: core, diagnostics          imported by: CLI only
 ```
 
-If static call-graph accuracy is uncertain, say so. For deep chains, run the reduce-nesting diagnostic pass
-(`techniques.md` §5.1); for dead-code / orphans, the Safe-Deletion Playbook (§8) and, for an exhaustive
-audit, the dead-weight sweep (§9).
+If static call-graph accuracy is uncertain, say so. For deep chains, apply the `techniques.md` §1 gate per
+hop; for dead-code / orphans, the Safe-Deletion Playbook (§6) and, for an exhaustive audit, the dead-weight
+rules (§7).
 
 ---
 
@@ -79,9 +79,8 @@ Name issues using these categories (precise vocabulary makes the diagnosis share
 15. Missing onboarding documentation
 16. Risky areas without test coverage
 
-These split into two families the skill removes **equally**: **indirection that hurts tracing** (2, 3, 4) and
-**dead weight / redundancy** (6, 7, 8, 13). Neither is subordinate; both raise read-and-understand cost; both
-are fixed via `techniques.md`.
+These split into the skill's two equal families — **indirection that hurts tracing** (2, 3, 4) and **dead
+weight / redundancy** (6, 7, 8, 13) — both fixed via `techniques.md`.
 
 For each issue record: **file path · category · evidence · why it blocks debugging or change · risk level ·
 recommended action · verification method · whether behavior may change.**
@@ -95,4 +94,4 @@ usage (`gh search code`, Sourcegraph); internal usage (LSP "Find References" + s
 (`git log -1`); last referenced (`git log -S`); dynamic-load risk (decorators, registries, entry points);
 test mention. Then present the user **one batched yes/no list** ("items 1–7 look safely removable, 8–10 look
 like keepers, 11–12 I still can't determine — confirm?"). Do not delete from this loop; promote items to
-`delete` or `keep`, then run the Safe-Deletion Playbook (`techniques.md` §8) on the approved set.
+`delete` or `keep`, then run the Safe-Deletion Playbook (`techniques.md` §6) on the approved set.

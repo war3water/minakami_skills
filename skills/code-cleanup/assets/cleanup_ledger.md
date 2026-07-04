@@ -1,8 +1,7 @@
 # Cleanup Campaign Ledger
 
-Copy this skeleton to `.agent_works/code-cleanup/CLEANUP_LEDGER.md` (a skill-named agent-work directory by
-default, or a path the user names — keep it out of the project's core code and `docs/`) for campaign mode
-(medium/large repos). A fresh session reads it and resumes. See `references/campaign-mode.md`.
+Copy to the agent-work directory (location rules: SKILL.md) for campaign mode. A fresh session reads it and
+resumes — see `references/campaign-mode.md`.
 
 - **Goal:** <one line — what "clean enough" means for this repo>
 - **Acceptable end state:** <deliberately-imperfect "done" — e.g. "hotspots untangled, dead weight removed,

@@ -1,5 +1,9 @@
 # Architecture Recovery Report
 
+Scale depth to the project: fill sections that have findings, omit empty ones — but always include the
+Multi-Hop / Call-Path Audit, Cross-Entry Duplicates, and Dead-Code Candidates sections (state "none found"
+explicitly rather than dropping them).
+
 ## Executive Summary
 
 ## Current Project Structure

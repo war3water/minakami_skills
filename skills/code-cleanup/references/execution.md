@@ -1,8 +1,8 @@
 # Execution — Target Proposal, Staged Plan, Patterns
 
 Target proposal, staged plan, and the canonical refactor patterns. Loaded with `techniques.md` (the how-to
-for each move), `safety.md` (the risk tiers and hard rules that govern every change), and `architecture.md`
-(exemplars for the target tree) at the execution stage. Self-contained for the planning and patterns.
+for each move) and `safety.md` (the risk tiers and hard rules that govern every change) at the execution
+stage. Self-contained for the planning and patterns.
 
 ---
 
@@ -13,16 +13,21 @@ Propose a target structure; do **not** implement it yet.
 **Local conventions first, exemplars as fallback.** The right layout is the one that matches *this*
 project's domain and its framework's official documented conventions. Honor the project's own established
 patterns where they exist. Only when the project has no clear convention, mirror a reputable OSS exemplar
-(`architecture.md`) — and cite which one and why. Do not impose a novel layout, and do not override a
+(table below) — and cite which one and why. Do not impose a novel layout, and do not override a
 sensible local convention with an external exemplar. **Existing chaos is not a convention** — random placement
 with no ownership rule *is* the no-convention case. And when the user explicitly asks to reconstruct toward a
 clearer, more intuitive structure, that ask sets the diagnostic: the smallest move-set that resolves it is the
 full regroup (staged, approved, executed directness-first) — do not shrink a requested reconstruction out of
 churn-aversion.
 
+Exemplars (fallback only; cite which you mirror and why): Kubernetes `cmd/<binary>/` + `pkg/` + `internal/`
+(Go services); Django flat per-app `apps/<app>/{models,views,urls,services}.py`; FastAPI single canonical
+import surface (libraries); React monorepo `packages/<scope>/` with explicit `index.ts` exports; Rust
+`crate/src/{lib,main}.rs` + workspaces; Bazel one-build-target-per-directory.
+
 The proposal must include: target directory tree; old→new path mapping; rationale per package; the
 directness-first migration strategy (atomic caller updates; a bounded fallback only where consumers are
-non-enumerable — `techniques.md` §4); test strategy; rollback strategy; risk tier per move (`safety.md`);
+non-enumerable — `techniques.md` §3); test strategy; rollback strategy; risk tier per move (`safety.md`);
 approval requirement per stage. Pick the **smallest move-set that resolves the diagnostic** (Occam) — a
 300-move "complete refactor" is rarely right; a 5-move "biggest pain point" usually is.
 
@@ -33,9 +38,9 @@ exemplar provides the *idiom*, the project's own evidence provides the *content*
    top-level split: entrypoints + wiring at the edges, pure domain core, I/O adapters at the boundary
    (composition root).
 2. **Modules from cohesion clusters** — co-call, shared-vocabulary, and co-change clusters (`techniques.md`
-   §6) name the directories; each directory gets one specific, nameable responsibility (no
+   §5) name the directories; each directory gets one specific, nameable responsibility (no
    `manager`/`utils`/`common`).
-3. **Idiom from the archetype** — pick the `architecture.md` exemplar matching the project's archetype (Go
+3. **Idiom from the archetype** — pick the exemplar (table above) matching the project's archetype (Go
    service → `cmd/pkg/internal`; Python web app → per-app; library → single import surface; monorepo →
    packages) and adopt its naming and nesting conventions; cite it.
 4. **Validate every directory against the gates** — each level must earn its existence (a directory holding
@@ -62,9 +67,8 @@ The `app/` vs `core/` split is the composition-root pattern: keep wiring at the 
 
 ## Staged plan
 
-Create the plan before editing. Recommend **plan-first** for any macro work — get agreement on the stages
-before changing code, so the agent doesn't see "refactor" and start moving many files at once. (Campaign
-mode generalizes this into a continuous ledger-driven loop — `campaign-mode.md`.)
+Create the plan before editing. Recommend **plan-first** for any macro work (SKILL.md intake; `safety.md`
+§4). (Campaign mode generalizes this into a continuous ledger-driven loop — `campaign-mode.md`.)
 
 | Stage | Allowed | Not allowed |
 |---|---|---|
@@ -72,7 +76,7 @@ mode generalizes this into a continuous ledger-driven loop — `campaign-mode.md
 | **1 Static-analysis tooling** | add/configure lint, dep-graph, dead-code, boundary tools; analysis scripts | source behavior change |
 | **2 Architecture boundary rules** | import-boundary / dependency rules; CI checks | moving many files; deleting |
 | **3 Low-risk moves** | move isolated scripts / evaluation / diagnostics files; update callers atomically (directness-first) | moving core runtime first; renaming public APIs; logic change |
-| **4 Medium-risk reorg** | split mixed-responsibility files (§6); merge duplicates (§7); simplify nesting (§5); rename internal-only | — |
+| **4 Medium-risk reorg** | split mixed-responsibility files and merge duplicates (`techniques.md` §5); simplify nesting; rename internal-only | — |
 | **5 Core refactor** (explicit approval, tests stable) | core restructuring, service extraction, dependency inversion, public-API cleanup | — |
 | **6 Retire fallbacks** | remove any compatibility layer once unreferenced | leaving a permanent wrapper (`safety.md` §3) |
 
@@ -91,7 +95,7 @@ efforts skip it entirely.
 **2. Direct move (preferred) / compatibility move (fallback)** — move `project/benchmark.py` →
 `project/evaluation/benchmark.py` and update all callers atomically via LSP (directness-first). A temporary
 re-export facade is used only if external consumers are non-enumerable, and is removed in Stage 6
-(`techniques.md` §4).
+(`techniques.md` §3).
 
 **3. Boundary enforcement** — declare and enforce direction, e.g. `core must not import evaluation / CLI /
 runtime integrations`; `evaluation may import core`; `CLI may import everything for composition`.
@@ -108,6 +112,6 @@ structure change (cover with characterization tests first).
 
 ## Compatibility layers
 
-Directness-first and the bounded-fallback exception are canonical in `techniques.md` §4. One execution-specific
+Directness-first and the bounded-fallback exception are canonical in `techniques.md` §3. One execution-specific
 caveat: when updating callers, prefer the LSP rename / move-symbol command over `grep + replace` — grep misses
 string-name references (decorators, plugin registries, test-discovery globs), the exact high-risk surfaces.

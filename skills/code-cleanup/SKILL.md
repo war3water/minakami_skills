@@ -6,12 +6,11 @@ description: Refactors a messy, hard-to-maintain project so a maintainer can rea
 # Code Cleanup
 
 Make a project easy for a maintainer to read, debug, and modify, while preserving behavior. The skill removes
-the maintainability problems that raise read-and-understand cost, in **two equally-important families** — a
-real cleanup usually does both, and neither is subordinate to the other:
+the maintainability problems that raise read-and-understand cost, in **two equally-important families** (a
+real cleanup does both):
 
-- **Indirection that hurts tracing** — **multi-hop code** (a simple feature reachable only after layers that
-  add no clear meaning, whether scattered across files (inter-file) or buried in deep nesting in one file
-  (intra-file)) and **entry/wiring mixed into implementation** (so you can't find where execution begins).
+- **Indirection that hurts tracing** — **multi-hop code** (inter-file scattering or intra-file deep
+  nesting) and **entry/wiring mixed into implementation** (so you can't find where execution begins).
   Fixed by flattening unjustified hops and the composition-root pattern (wiring at the edges, pure core); the
   call graph tags every node entry / wiring / domain / I/O to surface it.
 - **Dead weight and redundancy** — **dead / stale / orphaned code and files**, **duplicated or drifted
@@ -21,7 +20,9 @@ real cleanup usually does both, and neither is subordinate to the other:
 
 This SKILL.md is the **dispatcher**: it selects the mode, tells the agent exactly which reference files to
 load for each stage, and owns the principles and success criteria. The detailed procedures live in
-[references/](references/) and load on demand.
+[references/](references/) and load on demand. The references assume a competent model — they do not teach
+how to *find* problems; they enforce the judgment gates, edit-safety rules, and consistent deliverables
+that are easy to get wrong even when detection is easy.
 
 > **Trust the invoking context.** The user's message usually states the project, the pain, and the appetite.
 > Accept those and proceed; ask only for what you genuinely cannot infer. Don't run a mechanical question
@@ -50,9 +51,9 @@ needed file by reading another file mid-procedure. Every reference is **one hop*
 | Stage / trigger | Load (together, one hop) |
 |---|---|
 | Intake / mode selection | this file |
-| Discovery (map + call graph + hop audit) | [references/discovery.md](references/discovery.md) |
+| Analysis-only ask (map / call graph / hop audit, no edits) | [references/discovery.md](references/discovery.md) **only — stop there**; a competent model needs no more to analyze |
 | Diagnosis (classify, dependencies, name problems) | [references/diagnosis.md](references/diagnosis.md) + [references/techniques.md](references/techniques.md) |
-| Execution (target proposal, staged plan, patterns) | [references/execution.md](references/execution.md) + [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) + [references/architecture.md](references/architecture.md) |
+| Execution (target proposal, staged plan, patterns) | [references/execution.md](references/execution.md) + [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
 | Campaign mode | [references/campaign-mode.md](references/campaign-mode.md) + [references/safety.md](references/safety.md) |
 | Any deletion / dead-weight audit | [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
 | Optional enrichment (leaf — only if needed) | [references/glossary.md](references/glossary.md), [scripts/](scripts/), [assets/](assets/) |
@@ -123,8 +124,7 @@ Full safety contract: [references/safety.md](references/safety.md). The vocabula
    preservingly with verification — staged refactor or, when the evidence supports it, a scoped rewrite the
    user has agreed to. Campaign mode runs this as a continuous ledger-driven loop.
 
-Staged refactor and scoped rewrite are both legitimate; choose from what the map and call graph reveal, with
-the user's agreement on scope. Deep rewrite is the right answer when the structure is unnecessary and
+Deep rewrite is the right answer when the structure is unnecessary and
 redundant (indirection that doesn't earn its keep, competing implementations, boundaries that no longer
 match the domain); staged is the trap there.
 

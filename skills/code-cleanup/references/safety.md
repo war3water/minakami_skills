@@ -93,14 +93,18 @@ evidence in `glossary.md` bibliography.)
 AI agents systematically **over-produce indirection** — wrappers, factories, managers, "for-flexibility"
 layers nobody asked for — which is the very disease this skill treats. Guard against introducing it:
 
-- **Apply the "every layer must earn its existence" gate (`techniques.md` §2) to your OWN edits**, not only
+- **Apply the "every layer must earn its existence" gate (`techniques.md` §1) to your OWN edits**, not only
   to the existing code. A new layer with no test seam / plugin point / layer boundary / real reuse is net harm.
 - **Do not create new `manager`, `handler`, `processor`, `utils`, or `common` layers** without a specific,
   documented responsibility.
 - **No permanent compatibility layers.** Fallbacks (wrappers, facades, shims, tombstones) are bounded
-  exceptions tracked to removal (`techniques.md` §4). A left-behind "temporary" wrapper is a *new* permanent
+  exceptions tracked to removal (`techniques.md` §3). A left-behind "temporary" wrapper is a *new* permanent
   hop — a refactor failure, not a safe outcome. Prefer directness-first (atomic caller update, no fallback).
 - **Do not mix algorithm changes with structure refactoring** — separate boundaries, separate approval.
+- **A cleanup ask is not a redesign license.** "Remove dead weight / pointless indirection" does not
+  authorize replacing mechanisms (a decorator registry with a static map, dynamic dispatch with explicit
+  wiring) or renaming module surfaces — those change extension contracts and import paths. Propose them
+  separately as their own approved change.
 - **Net indirection must not increase.** A touched feature's meaningful-hop count after ≤ before (SKILL.md
   success criteria).
 
@@ -138,5 +142,9 @@ do not silently skip.
 3. **Optional external analyzers** — `vulture` / `pydeps` / `knip` / `madge` etc. Suggest only after the
    cheaper tiers; never require them.
 
-Per-ecosystem command catalog is in `architecture.md`. For unlisted ecosystems, consult the project manifest
-and the language's idiomatic commands; ask the user if conventions are unfamiliar.
+After a structural refactor, also **smoke-test documented extension paths** (a README-documented dormant
+plugin, a config-enableable feature): docs promise them to users, and the unit suite usually doesn't cover
+them.
+
+Consult the project manifest for its native commands; use the language's idiomatic test/lint/typecheck
+commands otherwise, and ask the user if conventions are unfamiliar.
