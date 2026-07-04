@@ -130,6 +130,11 @@ or a test pinning any of the above.
 - Never justify a deletion with this skill's own vocabulary ("permanent temporary wrapper",
   "violates directness-first"). The skill's rules *nominate* candidates; only verification evidence plus
   approval retires one.
+- **Mechanical pre-delete check (mandatory, per file):** search the repo's documentation — `README*`,
+  `docs/`, example/commented config — for the file's stem (e.g. `xml_handler`). **Any mention ⇒
+  approval-tier**, even if nothing currently wires it. If the file's own header or comments name consumers
+  you cannot see ("downstream", "external", "scripts", "keep until X migrates") ⇒ approval-tier. Record the
+  search and its result in the report for every deleted file.
 
 Everything below approval-tier (proven data-flow-dead branches, zero-reference private code, exact
 duplicates) follows the Safe-Deletion Playbook procedure in
