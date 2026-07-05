@@ -52,6 +52,7 @@ needed file by reading another file mid-procedure. Every reference is **one hop*
 |---|---|
 | Intake / mode selection | this file |
 | Analysis-only ask (map / call graph / hop audit, no edits) | [references/discovery.md](references/discovery.md) **only — stop there**; a competent model needs no more to analyze |
+| Scoped small edit (one named wrapper / function / file; blast radius ≤ ~5 files) | [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) **only** — this file's workflow and Deletion gates are the staging; skip the discovery/diagnosis/execution files |
 | Diagnosis (classify, dependencies, name problems) | [references/diagnosis.md](references/diagnosis.md) + [references/techniques.md](references/techniques.md) |
 | Execution (target proposal, staged plan, patterns) | [references/execution.md](references/execution.md) + [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
 | Campaign mode | [references/campaign-mode.md](references/campaign-mode.md) + [references/safety.md](references/safety.md) |
