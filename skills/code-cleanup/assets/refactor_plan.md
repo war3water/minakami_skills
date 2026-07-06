@@ -80,3 +80,9 @@ Every touched feature's meaningful-hop count after ≤ before. No permanent comp
 ### Compatibility layers removed
 
 ## Approval Required
+
+Every approval-tier item (SKILL.md Deletion gates), one row each — approving this plan authorizes exactly
+these and nothing more. An item not listed here is not approved by this plan.
+
+| Item | Kind (deletion / shim retirement / public-surface rename / behavior-defining test change) | Evidence | Stage |
+| ---- | ---- | ---- | ---- |

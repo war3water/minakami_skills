@@ -39,7 +39,11 @@ that are easy to get wrong even when detection is easy.
 | **Small project** (< ~30 source files) | the whole tree fits in one head | still do a full inventory first, then work the highest-value items; skip the heavy staging. Never one-change-at-a-time without a survey. |
 
 Recommend **plan-first** for anything macro: produce and agree the staged plan before editing, so the agent
-doesn't see "refactor" and start moving many files at once.
+doesn't see "refactor" and start moving many files at once. In an interactive session, run the
+discovery→plan stages under plan mode and switch to auto-accepted execution only after the plan is
+approved. **Plan approval is also how the Deletion gates below get satisfied in one batch** — the plan must
+therefore list every approval-tier item (deletions, shim retirements, public-surface renames) explicitly;
+an item the plan never named is not approved by the plan.
 
 ---
 
@@ -123,7 +127,8 @@ shim, re-export, or entry point whose consumers may live **outside this repo** (
 says nothing about out-of-tree consumers); a registered plugin / stage / handler reachable by configuration;
 or a test pinning any of the above.
 
-- Approval-tier deletion requires the user's explicit confirmation **for that item**.
+- Approval-tier deletion requires the user's explicit confirmation **for that item** — either directly, or
+  by approving a plan that names the item explicitly.
 - **No reachable user = no approval.** The default disposition is **keep + flag in the report** with the
   evidence and the question you would have asked. A backup copy, a verbatim restore block, or
   zero-reference evidence is **not a substitute for approval** — it makes the mistake recoverable, not
