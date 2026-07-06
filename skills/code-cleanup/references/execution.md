@@ -29,7 +29,9 @@ The proposal must include: target directory tree; old→new path mapping; ration
 directness-first migration strategy (atomic caller updates; a bounded fallback only where consumers are
 non-enumerable — `techniques.md` §3); test strategy; rollback strategy; risk tier per move (`safety.md`);
 approval requirement per stage. Pick the **smallest move-set that resolves the diagnostic** (Occam) — a
-300-move "complete refactor" is rarely right; a 5-move "biggest pain point" usually is.
+300-move "complete refactor" is rarely the answer to a pain-point ask, and a 5-move fix never answers a
+requested reconstruction: **when the user asked for the restructure, the full regroup is the smallest set
+that resolves the diagnostic** (see the reconstruction clause above — do not shrink it).
 
 **Deriving the target tree (when reconstruction is in scope).** There is no universal right layout — the
 exemplar provides the *idiom*, the project's own evidence provides the *content*:
@@ -84,6 +86,12 @@ Stage gating mirrors the risk tiers in `safety.md` (Stages 0–3 ≈ low, Stage 
 verification within this agreed plan, Stage 5 ≈ high → explicit approval). Stage 6 exists because **no refactor
 is complete while a temporary fallback still stands** — landing directly via directness-first means most
 efforts skip it entirely.
+
+**Scoped-rewrite alternative.** When the evidence shows the structure itself is unnecessary and redundant
+(competing implementations, boundaries that no longer match the domain), staging a migration *of the wrong
+structure* is the trap. Propose a scoped rewrite instead — same plan artifact, but Stages 3–5 collapse into
+**build-new → verify against the golden / end-to-end oracle → cut over → retire old**, with the cut-over and
+every approval-tier item named in the plan's Approval Required table before execution starts.
 
 ---
 
