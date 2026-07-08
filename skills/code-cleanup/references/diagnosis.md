@@ -22,7 +22,7 @@ Classify important files in a table:
 | **keep** | actively imported, an entry point, framework-loaded, public API, or plugin-registered; role clear and stable. |
 | **rename** | the name doesn't reflect responsibility (vague `manager`/`handler`/`utils`), but it's otherwise in the right place doing the right thing. |
 | **move** | responsibility is clear but belongs in a different package; caller updates are mechanical (directness-first, `techniques.md` §3). |
-| **split** | mixes unrelated responsibilities, multiple independent clusters, a debugging hotspot, or high fan-out with low cohesion (`techniques.md` §5). |
+| **split / decompose** | mixes unrelated responsibilities, multiple independent clusters, a debugging hotspot, or high fan-out with low cohesion — a mixed-responsibility *file* → separate modules, or an over-large *function/class* → extract cohesive functions/methods (`techniques.md` §5). |
 | **merge** | a thin wrapper / several tiny files create indirection without real meaning; maintainers jump across files for one concept. |
 | **simplify** | responsibility is correct but the implementation is excessively nested or indirected (`techniques.md` §1–§2, checked against §4). |
 | **delete** | not imported, not referenced in production, not dynamically loaded, not a framework convention, not public, and not exercised by a behavioral test of a live feature — and the user approves. (A symbol referenced *only* by its own tests is a test-only orphan: removable with its tests, `techniques.md` §7.) The Safe-Deletion Playbook (`techniques.md` §6) governs. |
@@ -61,7 +61,10 @@ Name issues using these categories (precise vocabulary makes the diagnosis share
 
 1. Architecture / module-boundary issues
 2. **Multi-hop indirection (inter-file)** — feature logic scattered across forwarding layers / folders
-3. **Excessive nesting (intra-file)** — deep control flow or forwarding chains inside one function/file
+3. **Oversized or over-nested single unit (intra-file)** — one function/class hard to follow because of
+   deep control flow *or* sheer length and too many unrelated responsibilities in one body (long method /
+   god function / god class). Reduce nesting, and where the body does several distinct things, extract
+   cohesive, named sub-functions/methods (decompose — `techniques.md` §5)
 4. **Entry-vs-implementation mixing** — business logic in the entry/wiring layer, or wiring (config, DI,
    I/O setup) scattered through domain code. Use the call-graph node tags (entry / wiring / domain / I/O).
    The fix is the composition-root pattern (imperative shell, functional core): push wiring to the edges,

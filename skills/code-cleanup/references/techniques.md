@@ -12,7 +12,7 @@ deletion procedures that preserve behavior. Self-contained; risk tiers and hard 
 2. How few hops (minimize, then justify)
 3. Directness-first; no permanent fallbacks
 4. When NOT to flatten
-5. Consolidation: splits, merges, cross-entry duplicates
+5. Restructuring: splits, decomposition, merges, cross-entry duplicates
 6. Safe-Deletion Playbook
 7. Dead-weight verification rules
 
@@ -48,6 +48,12 @@ allow; keep only hops that pass the §1 gate, and remove or merge the rest. A lo
 unjustified hop; a high count is fine when *every* hop is justified. Record hop counts as a **measurement,
 not a goal** — a framework request pipeline that genuinely needs six justified hops keeps all six. A
 refactor must not *increase* a touched feature's meaningful-hop count (SKILL.md success criteria).
+
+**Decomposition is not a hop increase.** That "no increase" rule targets cross-unit *tracing* hops —
+forwarding layers a maintainer must jump through to follow one feature. Breaking a single over-large unit
+into cohesive, named local helpers (§5) adds functions but *reduces* what a maintainer holds in their head;
+it does not count against the hop budget. Adding functions is the correct fix for a god function — the §1
+gate is the brake against over-extraction, not a reason to leave the monolith intact.
 
 ---
 
@@ -94,12 +100,19 @@ explicit wiring) or rename a module surface as a side effect of "removing indire
 
 ---
 
-## 5. Consolidation: splits, merges, cross-entry duplicates
+## 5. Restructuring: splits, decomposition, merges, cross-entry duplicates
 
 **Splitting a mixed-responsibility file:** identify clusters by co-call graph, shared vocabulary, and
 co-change history; a cluster you can't give a clear, brief name isn't a cluster. Migrate one cluster at a
 time (never big-bang), callers updated per §3 — a facade only if callers are non-enumerable. Don't split
 horizontally by layer (interfaces/impls/utils) when the real cohesion is vertical-by-feature.
+
+**Decomposing an over-large function/class (long method / god function):** extract cohesive, named
+sub-units along the seams where the body shifts responsibility — each extraction is one nameable job over a
+related set of locals (if you can't name it in a few words, it isn't a clean seam). Keep helpers private and
+adjacent unless independently reused; don't build a forwarding chain, and don't extract one-line or
+un-nameable fragments (that trades a long body for scattered noise — the §1 gate applies in the additive
+direction too). This ADDS functions on purpose; §2 says why that is not an indirection increase.
 
 **Merging drifted duplicates:** compare drift *before* assuming identity — variants often diverge in error
 handling, edge cases, or return shape, and sometimes the drift is intentional (keep, with a comment).
