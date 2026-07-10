@@ -10,7 +10,7 @@ stage. Self-contained for the planning and patterns.
 
 Propose a target structure; do **not** implement it yet.
 
-**Local conventions first, exemplars as fallback.** The right layout is the one that matches *this*
+**Local conventions first, exemplars only as a secondary choice.** The right layout is the one that matches *this*
 project's domain and its framework's official documented conventions. Honor the project's own established
 patterns where they exist. Only when the project has no clear convention, mirror a reputable OSS exemplar
 (table below) — and cite which one and why. Do not impose a novel layout, and do not override a
@@ -20,7 +20,7 @@ clearer, more intuitive structure, that ask sets the diagnostic: the smallest mo
 full regroup (staged, approved, executed directness-first) — do not shrink a requested reconstruction out of
 churn-aversion.
 
-Exemplars (fallback only; cite which you mirror and why): Kubernetes `cmd/<binary>/` + `pkg/` + `internal/`
+Exemplars (secondary choice only, when no sensible local convention exists; cite which you mirror and why, against its current official docs): Kubernetes `cmd/<binary>/` + `pkg/` + `internal/`
 (Go services); Django flat per-app `apps/<app>/{models,views,urls,services}.py`; FastAPI single canonical
 import surface (libraries); React monorepo `packages/<scope>/` with explicit `index.ts` exports; Rust
 `crate/src/{lib,main}.rs` + workspaces; Bazel one-build-target-per-directory.
@@ -80,25 +80,34 @@ Create the plan before editing. Recommend **plan-first** for any macro work (SKI
 | **3 Low-risk moves** | move isolated scripts / evaluation / diagnostics files; update callers atomically (directness-first) | moving core runtime first; renaming public APIs; logic change |
 | **4 Medium-risk reorg** | split mixed-responsibility files and merge duplicates (`techniques.md` §5); simplify nesting; rename internal-only | — |
 | **5 Core refactor** (explicit approval, tests stable) | core restructuring, service extraction, dependency inversion, public-API cleanup | — |
-| **6 Retire fallbacks** | remove any compatibility layer once unreferenced | leaving a permanent wrapper (`safety.md` §3) |
+| **6 Retire fallbacks** (high-tier — approval per shim) | remove any compatibility layer once unreferenced | leaving a permanent wrapper (`safety.md` §3); retiring an outward-facing shim without approval |
 
 Stage gating mirrors the risk tiers in `safety.md` (Stages 0–3 ≈ low, Stage 4 ≈ medium → proceed with
-verification within this agreed plan, Stage 5 ≈ high → explicit approval). Stage 6 exists because **no refactor
-is complete while a temporary fallback still stands** — landing directly via directness-first means most
-efforts skip it entirely.
+verification within this agreed plan, Stage 5 ≈ high → explicit approval). **Stage 6 is also high-tier** —
+retiring a compatibility layer that may have out-of-tree consumers needs approval per `safety.md` §1/§3, so
+name every retirement in the plan's Approval Required table. Stage 6 exists because **no refactor is complete
+while a temporary fallback still stands** — landing directly via directness-first means most efforts skip it
+entirely.
 
 **Scoped-rewrite alternative.** When the evidence shows the structure itself is unnecessary and redundant
 (competing implementations, boundaries that no longer match the domain), staging a migration *of the wrong
 structure* is the trap. Propose a scoped rewrite instead — same plan artifact, but Stages 3–5 collapse into
 **build-new → verify against the golden / end-to-end oracle → cut over → retire old**, with the cut-over and
-every approval-tier item named in the plan's Approval Required table before execution starts.
+every approval-tier item named in the plan's Approval Required table before execution starts. A scoped rewrite
+is **not** a Mikado exemption (`safety.md` §4): build-new still lands incrementally and oracle-verified, the
+**cut-over is a High-tier action** requiring explicit approval and a tested rollback, and retire-old is
+blocked until the new path passes the oracle.
 
 ---
 
 ## Common refactor patterns
 
 **1. Root-level module grouping** — flat `a.py b.py c.py …` at the package root → group by responsibility
-(`core/ runtime/ evaluation/ config/`). Use only after import and entry-point analysis.
+(`core/ runtime/ evaluation/ config/`). Use only after import and entry-point analysis. When the flat
+siblings are shards of one just-split unit that share private helpers or import each other (the back-edge
+case, `techniques.md` §5), the grouping is specifically a **subpackage with a facade `__init__` + a shared
+leaf**, not a bare relocation — it removes the cycle and stops public-named modules from advertising private
+implementation.
 
 **2. Direct move (preferred) / compatibility move (fallback)** — move `project/benchmark.py` →
 `project/evaluation/benchmark.py` and update all callers atomically via LSP (directness-first). A temporary

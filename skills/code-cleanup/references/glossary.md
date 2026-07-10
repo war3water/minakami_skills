@@ -11,7 +11,7 @@ Each term is a recognized diagnosis with a remediation path, not a generic compl
 
 | Term | Meaning | Typical remediation |
 |---|---|---|
-| **Multi-hop code** | A simple feature is reachable only after layers that add no clear meaning — inter-file (scattered call chain) or intra-file (deep nesting / forwarding). | `techniques.md`: every layer earns its existence; directness-first. |
+| **Multi-hop code** | Umbrella for indirection that hurts tracing: a simple feature is reachable only after layers that add no clear meaning — inter-file (scattered call chain) or intra-file (deep nesting / forwarding, catalogued separately as **Deep nesting**). | `techniques.md`: every layer earns its existence; directness-first. |
 | **Architectural erosion** | Implemented architecture has drifted from intended; boundaries leak. | Re-establish boundaries via import-linter / dependency-cruiser; enforce in CI. |
 | **Unclear module boundaries** | Module names no longer describe contents; responsibilities overlap. | Match a layout (local-first); move files in low-risk batches. |
 | **Poor code navigability** | A maintainer can't quickly find where a feature lives. | Map + call graph; flatten unjustified indirection. |
@@ -23,8 +23,9 @@ Each term is a recognized diagnosis with a remediation path, not a generic compl
 | **Entry-vs-implementation mixing** | Business logic in the entry/wiring layer, or wiring scattered through domain code. | Composition root — wiring at the edges, pure core. |
 | **Dead-code candidates** | Code that appears unused. *Candidate*, not confirmed. | Safe-Deletion Playbook: tombstone, soak, verify, delete. |
 | **Orphaned files** | Not imported by anything traceable statically; may be loaded dynamically. | Same playbook as dead-code. |
-| **Duplicate logic** | Same operation in multiple places, often drifted. | Consolidate to one canonical impl (rule of three). |
+| **Duplicate logic** | Same operation in multiple places, often drifted. | Consolidate to one canonical impl (rule of three for general logic; parallel *public entries* consolidate at two — `techniques.md` §5). |
 | **Circular dependencies** | A imports B, B imports A — often a missing shared abstraction. | Pull the shared concept up, or invert with an interface. |
+| **Unfinished split (re-export back-edge)** | A god-module split left the parent re-exporting its own shards, or shards importing shared helpers back from the parent — a cycle hidden by bottom-imports / `# noqa: E402` / "acyclic either order" comments. | Sink shared helpers into a leaf (cycle → DAG); promote private shards to a subpackage with a facade `__init__` (`techniques.md` §5). |
 | **Weak ownership boundaries** | Many features write the same module; nobody owns it. | Split by feature, or designate an owner. |
 | **Framework-convention ambiguity** | Auto-loaded files that don't follow the framework's documented conventions. | Adopt the framework's idiomatic structure; cite which. |
 | **Onboarding-hostile structure** | A new maintainer can't find the entry point or trace a feature in the first session. | Map + call graph as documentation; flatten obvious wrappers. |

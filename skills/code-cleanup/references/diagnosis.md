@@ -41,6 +41,13 @@ Build a maintainer-oriented map covering: entry points → major call paths; maj
 fan-in files; high fan-out files; circular dependencies; cross-domain imports; deep call chains; overly
 broad utility modules; files mixing responsibilities; files that make debugging hard.
 
+**Cycle-in-disguise from an unfinished split.** Treat as a circular-dependency finding even when comments
+rationalize it as intentional: a module that re-exports symbols it imports back from its own just-split
+shards, or shards that import shared helpers / base types / constants back from the parent. Tells — an import
+placed at the *bottom* of the file, `# noqa: E402`, a `TYPE_CHECKING`-only back-import, or a docstring
+explaining that the import order "works" / the pair is "acyclic in either import order." These mark a
+god-module split that stopped halfway; the remedy is the back-edge test (`techniques.md` §5).
+
 ```text
 EntryPointA -> ModuleA.fn -> ModuleB.fn -> ModuleC.fn
 

@@ -13,8 +13,9 @@ python scripts/hotspots.py [--root .] [--days 365] [--top 30]
 ```
 
 Ranks tracked files by commit churn × current LoC so you *order* found problems by likely pain, not decide
-what to inspect. Git history only; language-agnostic. Churn is a prioritization signal, never a gate — see
-`references/discovery.md` (cold-code problems are never filtered out).
+what to inspect. Reads git history plus current file sizes; language-agnostic. Churn is a prioritization
+signal, never a gate — see `references/discovery.md` (cold-code problems are never filtered out; this script
+only ranks files that changed in the window, so cold code is surfaced by discovery, not here).
 
 ### `dead_candidates.py` — dead-code + test-only-orphan scanner — Python only
 

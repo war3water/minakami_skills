@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import re
 import sys
 import warnings
@@ -39,6 +40,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# `test`/`tests` as a whole word — matches test, tests, unit_tests, integration-test;
+# NOT contest / latest / attestation. Auto-detect is conservative on purpose; pass
+# --tests explicitly for nonstandard layouts (e.g. a dir named `testing`).
+_TESTISH = re.compile(r"(?:^|[^a-z])tests?(?:[^a-z]|$)")
 _VENDOR = {".git", ".venv", "venv", "env", ".env", "node_modules", "__pycache__",
            "build", "dist", ".tox", ".mypy_cache", ".pytest_cache", "site-packages"}
 
@@ -50,7 +55,7 @@ def _resolve_tests(root: Path, explicit: list[str] | None) -> list[Path]:
     seen = {p.resolve() for p in found}
     for p in sorted(root.iterdir()):
         if (p.is_dir() and p.name not in _VENDOR
-                and "test" in p.name.lower() and p.resolve() not in seen):
+                and _TESTISH.search(p.name.lower()) and p.resolve() not in seen):
             found.append(p)
     return found
 
@@ -85,7 +90,8 @@ def _py_files(dirs: list[Path], tests: list[Path]) -> list[Path]:
             if _VENDOR & set(p.parts):
                 continue
             rp = str(p.resolve())
-            if any(rp.startswith(tr) for tr in test_roots):  # never count tests as production
+            # separator-bounded: `test` root must not swallow a sibling like `testbed`
+            if any(rp == tr or rp.startswith(tr + os.sep) for tr in test_roots):  # never count tests as production
                 continue
             out.append(p)
     return out
@@ -96,7 +102,7 @@ def _word_counts(files: list[Path]) -> Counter:
     for f in files:
         try:
             counts.update(_WORD.findall(f.read_text(encoding="utf-8")))
-        except OSError:
+        except (OSError, UnicodeDecodeError):  # a non-UTF-8 file must not abort the whole scan
             continue
     return counts
 
@@ -110,13 +116,18 @@ def _collect_defs(prod_files: list[Path]):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # don't echo lint warnings from scanned files
                 tree = ast.parse(f.read_text(encoding="utf-8"))
-        except (OSError, SyntaxError) as exc:
+        except (OSError, SyntaxError, UnicodeDecodeError) as exc:
             print(f"warning: skipping {f}: {exc}", file=sys.stderr)
             continue
         for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-            ):
+            # recognize __all__ as plain / annotated / augmented assignment
+            if isinstance(node, ast.Assign):
+                targets = node.targets
+            elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+                targets = [node.target]
+            else:
+                targets = []
+            if any(isinstance(t, ast.Name) and t.id == "__all__" for t in targets):
                 for el in getattr(node.value, "elts", []):
                     if isinstance(el, ast.Constant) and isinstance(el.value, str):
                         public.add(el.value)

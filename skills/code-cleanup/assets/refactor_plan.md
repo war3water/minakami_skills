@@ -11,7 +11,8 @@
 | Touched Feature | Meaningful Hops Before | Target After | Must Not Exceed |
 | --------------- | --------------------: | -----------: | --------------- |
 
-Every touched feature's meaningful-hop count after ≤ before. No permanent compatibility layers remain.
+Every touched feature's meaningful-hop count after ≤ before. No permanent compatibility layers remain. Any
+module / god-function split lands **acyclic** — no re-export back-edge or shared-helper cycle (`techniques.md` §5).
 
 ## Stage 0: Documentation Only
 

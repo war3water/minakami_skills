@@ -20,7 +20,7 @@ Every change is one of three tiers; the tier sets whether the agent may proceed 
 
 | Tier | Examples | Policy |
 |---|---|---|
-| **Low (reversible)** | inline a verified pass-through wrapper, move an isolated file with all callers updated (directness-first), rename an internal-only symbol via LSP, documentation edits, add static-analysis config | proceed; verify each (revert-on-red) |
+| **Low (reversible)** | inline a verified pass-through wrapper, move an isolated **internal-only** file whose callers are all enumerable in-tree (directness-first; a file any out-of-tree consumer may import is a public-import-path change → High), rename an internal-only symbol via LSP, documentation edits, add static-analysis config | proceed; verify each (revert-on-red) |
 | **Medium** | split a mixed-responsibility file, merge drifted duplicates, simplify deep nesting, reorganize a non-core package | proceed; in campaign mode up to the round's file budget, then summarize and continue |
 | **High (irreversible / outward-facing)** | move core runtime files; delete files; rename/change a public function, class, CLI, config format, schema, or file format; change a public import path; remove a compatibility layer; change behavior-defining tests; refactor a dynamic / plugin / registry system | **always checkpoint with the user — never auto** |
 
@@ -44,16 +44,23 @@ arXiv 2511.04824, 2411.04444).
 If a refactor edit makes the build / typecheck or a **behavioral** test go red (a real regression — see *Tests
 are signals* below for the behavioral-vs-structure-coupled distinction):
 
-1. **Revert ONLY the files this session edited** — `git restore -- <paths>` listing exact paths. **Never**
-   `git restore .`, `git restore --staged .`, or `git checkout -- .` — those wipe unrelated uncommitted
-   user changes. If unsure which files are yours, `git stash push --keep-index --include-untracked` stashes
-   everything recoverably.
+1. **Revert ONLY the files this session edited, to their pre-edit state — not blindly to HEAD.** For a file
+   that was **clean** at session start, `git restore -- <path>` is correct. For a file that was **already
+   dirty before you touched it** (co-edited — routine in the dirty worktrees §5 embraces), `git restore`
+   resets it to HEAD and **destroys the user's uncommitted work along with your edit** — instead restore that
+   file to the pre-edit snapshot you took (§5). If you have **no snapshot**, do **not** `git restore` /
+   `git checkout` the whole file — discard only your own hunks with `git restore -p -- <path>` (keep the
+   user's), manually reverse your edit, or `git stash push -- <path>` and ask the user. Bare `git restore` on
+   a co-edited file is never the answer. **Never** `git restore .`, `git restore --staged .`, or
+   `git checkout -- .` — those wipe unrelated uncommitted user changes. If unsure which files are yours,
+   `git stash push --keep-index --include-untracked` stashes everything recoverably.
 2. Record the broken thing as a **prerequisite** — a smaller slice that must land first (Mikado).
 3. Try the smaller slice. Never push through red by writing more refactor on top.
 
 ### Tests are signals, not proof of correct structure
 
-A green suite proves *behavior didn't change* — it says nothing about whether the structure is *right*. Don't
+A green suite is evidence *behavior didn't change on the paths it exercises* — it is necessary, not proof,
+and says nothing about whether the structure is *right*. Don't
 conflate behavior-preserving (good) with structure-preserving (often the redundancy you are here to remove).
 Risk- and churn-aversion that keeps stale structure alive is the main thing that blocks real reorganization.
 
@@ -65,8 +72,11 @@ Risk- and churn-aversion that keeps stale structure alive is the main thing that
     blocker; apply revert-on-red.
   - **Stale structure-coupling** — asserts on internals (a wrapper exists, a mock was called N times, a
     private path / registry is hit), not on behavior; it breaks *because* you correctly removed that
-    structure → update / repoint / remove the test and document why. Do **not** revert the improvement, and
-    do **not** preserve the dead structure to keep it green.
+    structure. Reclassify a red test as stale-coupling **only when both hold**: (a) it asserts on a named
+    structural fact, not an input→output result, **and** (b) the behavioral oracle — golden / e2e, or a
+    pre-refactor characterization at the public boundary — is demonstrably **green**. Then → update / repoint /
+    remove the test and document why; do **not** revert the improvement or preserve dead structure to keep it
+    green. **If no behavioral oracle exists to confirm behavior held, the failure defaults to behavioral.**
 - **Never preserve a redundant wrapper / shim / registry solely to keep a stale test green or to avoid
   call-site churn.** Prove it is load-bearing — it adds validation, transformation, orchestration over
   multiple real ops, dependency isolation, a stable public boundary, or context-bearing logging, or has real
@@ -88,8 +98,8 @@ Risk- and churn-aversion that keeps stale structure alive is the main thing that
 
 When a deterministic refactor exists (IDE Inline/Rename/Move/Extract; `ruff` autofix; `rope`; LSP code
 actions), **prefer it over a hand-written diff.** The model decides *what* and *why*; the engine produces
-the *diff*. (Raw LLM refactors sometimes change behavior or break syntax; deterministic engines do not —
-evidence in `glossary.md` bibliography.)
+the *diff*. (Raw LLM refactors sometimes change behavior or break syntax; deterministic engines are far
+less likely to and produce a reviewable diff — still verify each — evidence in `glossary.md` bibliography.)
 
 ---
 
@@ -129,10 +139,14 @@ layers nobody asked for — which is the very disease this skill treats. Guard a
 
 ## 5. Working-tree hygiene
 
-Before a refactor stage, **inspect** `git status` and note which files are yours, so revert-on-red is
-unambiguous. Do **not** demand a pristine tree — agents routinely work in dirty worktrees; agent-owned-files-
-only rollback (rule 2.1) handles uncommitted user changes. If the tree is heavily mixed and rollback would
-be ambiguous, offer to stash; don't force it.
+Before a refactor stage, **inspect** `git status` and note which files are yours. For any file that is
+**already dirty and you intend to edit**, snapshot its pre-edit content first (a per-file copy, or capture
+the working-tree state with `git stash create` / `git diff -- <path> > agent.patch`) so revert-on-red can
+undo *your* change without discarding the user's. Do **not** demand a pristine tree — agents routinely work
+in dirty worktrees; the discipline is snapshot-before-edit on co-edited files, not a pristine tree. Rule 2.1's
+plain `git restore` is safe only for files that were **clean** at session start — reverting a co-edited file
+to HEAD would destroy the user's uncommitted work. If the tree is heavily mixed and rollback would be
+ambiguous, offer to stash; don't force it.
 
 ---
 

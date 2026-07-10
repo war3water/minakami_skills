@@ -10,8 +10,12 @@ in cold code). See references/discovery.md (prioritization).
 Usage:
     python scripts/hotspots.py [--root .] [--days 365] [--top 30]
 
-Reads git history only; changes nothing. Output columns: rank, commits (churn),
-loc, churn*loc (the hotspot intersection), path.
+Reads git history and current file sizes; changes nothing. Output columns: rank,
+commits (churn), loc, churn*loc (the hotspot intersection), path.
+
+Ranks only files with commits in the window (a renamed path loses its pre-rename
+churn). This ORDERS already-found problems by likely pain — it is NOT the discovery
+sweep: cold, zero-churn code is found by discovery, never filtered out by this script.
 """
 from __future__ import annotations
 

@@ -3,7 +3,8 @@
 Campaign mode is the continuous operating model: instead of *analyze → report → stop*, it runs a bounded,
 evidence-gated loop that keeps working prioritized cleanup across rounds until the codebase reaches an agreed
 end state. The thing that persists across rounds is a **backlog ledger**, not the agent's discretion. Loaded
-with `safety.md` when the user requests a deep / ongoing cleanup. Self-contained.
+with `safety.md` when the user requests a deep / ongoing cleanup. Self-contained for the loop; each round
+re-enters the Diagnosis / Execution / deletion stages and loads their files per the SKILL.md manifest.
 
 ---
 
@@ -93,10 +94,14 @@ Campaign mode adds no new safety surface: apply `safety.md` in full, per item, e
 
 Continuation is what makes safe deletion executable; a single pass cannot tombstone-then-delete.
 
-- A delete candidate enters `soaking`: tombstone the symbol or file (`techniques.md` §6 step 5) in round *N*.
-- Hard-delete only in a later round, after a re-survey surfaces no consumer.
-- Soak is measured by **tombstone + one later-round confirmation**, not wall-clock — an engagement has no
-  release cadence. The full Safe-Deletion Playbook (`techniques.md` §6) still governs each deletion.
+- A delete candidate enters `soaking`: tombstone the symbol or file — **log-and-delegate, behavior preserved**
+  (`techniques.md` §6 step 5) — in round *N*.
+- Hard-delete only in a later round, after the soak yields **new evidence from a named observation source**
+  (the tombstone's log fired nowhere across real runs; a run of the golden / extension paths; external usage
+  re-checked) — not merely a second static survey, which repeats round *N*'s reasoning and adds no signal.
+- Soak is measured by **tombstone + one later-round confirmation from that source**, not wall-clock — an
+  engagement has no release cadence. The full Safe-Deletion Playbook (`techniques.md` §6) still governs each
+  deletion.
 
 ---
 
@@ -107,6 +112,12 @@ Stop, and emit a summary, when any holds: **dry round** (a full SURVEY admits no
 reached** (the acceptable end state in the ledger header). Target the agreed end state, never "perfect."
 Non-idempotent oscillation (A → B → A across rounds) signals churn and is treated as a dry round.
 
+**Drain the soak queue before the final summary.** No `soaking` item may be left tombstoned at termination —
+for each, either the soak confirmed it dead (hard-delete) or it did not (revert the tombstone to live and
+downgrade the item to `parked`). Do **not** open a new soak in a round with no later round budgeted;
+keep-and-flag such deletes instead. A left-behind tombstone is itself a permanent "temporary" artifact
+(SKILL.md success criterion 4), so termination is not reached while one stands.
+
 ---
 
 ## 10. Execution model (honest limits)
@@ -116,5 +127,5 @@ Non-idempotent oscillation (A → B → A across rounds) signals churn and is tr
 - **Within a turn** — EXECUTE works the whole prioritized batch (verifying between items), not one then stop.
 - **Across sessions** — the tracked ledger file makes resumption stateless: a fresh invocation reads it and
   continues, no reliance on conversation memory.
-- **Unattended recurrence** — handled by the harness `/loop` feature when the user wants it; campaign mode
-  does not depend on it.
+- **Unattended recurrence** — handled by an external scheduler if the host provides one (e.g. the harness
+  `/loop` feature); campaign mode does not depend on it.

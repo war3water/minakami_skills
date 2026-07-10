@@ -56,18 +56,18 @@ hop**. This is the core diagnostic for multi-hop code (`techniques.md`).
 ```text
 Feature: upload a file
 
-Current call path:
-  cli.py:main()
-    -> app.py:run()                         KEEP   (composition / entry)
+Current call path (a hop = one node on the path; meaningful = nodes that pass the `techniques.md` §1 gate):
+  cli.py:main()                             KEEP   (entry / composition)
+    -> app.py:run()                         MERGE  (thin bootstrap — folds into the entry)
     -> controller.py:handle()               MERGE  (overlaps service.execute)
     -> dispatcher.py:dispatch()             MERGE  (forwards only)
     -> service_factory.py:get_service()     DELETE (one service exists)
     -> service.py:execute()                 KEEP   (orchestration + validation)
     -> storage.py:put_object()              KEEP   (external boundary)
-Hop count: 6 (meaningful: 3)
+Hop count: 7 (meaningful: 3)
 
 Suggested target:
-  cli.py:main() -> upload.run() -> storage.put_object()
+  cli.py:main() -> service.execute() -> storage.py:put_object()
 Expected hops: 3
 ```
 

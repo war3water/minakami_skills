@@ -4,7 +4,7 @@ Loaded during diagnosis and execution. This file does not teach detection — a 
 forwarding chains, dead code, and duplication on its own. It encodes what models demonstrably get wrong
 *without* it: which layers to keep, how to remove things without breaking contracts, and the consolidation /
 deletion procedures that preserve behavior. Self-contained; risk tiers and hard rules are in `safety.md`
-(co-loaded).
+(co-loaded whenever this file executes a change).
 
 ## Contents
 
@@ -72,6 +72,11 @@ mode: a ledger item that must reach `done`). **A permanent compatibility layer i
 relocated the mess into a new permanent hop. Resolve uncertainty by *enumerating references*, not by
 leaving a hop standing.
 
+*Which "facade"?* A **re-export facade** here means a **compatibility shim** — it forwards to code that lives
+elsewhere, so it is bounded and tracked to removal (Stage 6). A package's own `__init__` re-exporting its
+private submodules is **not** that: it is the package's **canonical public surface** — one permanent hop, the
+correct end-state of a subpackage split (§5), never a fallback to retire.
+
 Removing an **existing** compatibility layer follows the same discipline in reverse: never justify the
 removal by breakage **your own refactor created** ("my consolidation broke the shim anyway" is circular —
 the consolidation changed a surface the shim was protecting). When consumers cannot be enumerated or no
@@ -107,6 +112,20 @@ co-change history; a cluster you can't give a clear, brief name isn't a cluster.
 time (never big-bang), callers updated per §3 — a facade only if callers are non-enumerable. Don't split
 horizontally by layer (interfaces/impls/utils) when the real cohesion is vertical-by-feature.
 
+**Finishing a split — the back-edge test.** A split is not done while a *back-edge* remains: the parent
+re-exporting symbols it imports from its own new shards, or a shard importing shared helpers / base types /
+constants back from the parent. That back-edge is a module-level cycle (an import at file-bottom or under
+`# noqa: E402` is the same cycle, only hidden), and a re-export facade whose callers *are* enumerable is the
+permanent-forwarding failure of §3, not an end state. Two moves finish it: (1) **sink the shared surface into
+a leaf** — move the helpers / base types / constants both sides need into a lower module the parent and every
+shard import *downward only*, turning the cycle into a DAG; (2) **if the shards are private to the unit**
+(callers reach them only through the one facade), **promote the group to a subpackage** whose `__init__` is
+the facade and whose shards are `_`-prefixed private modules — mirror the repo's own package idiom if it has
+one. A package `__init__` re-exporting its own private leaves is the unit's canonical
+public surface (one hop), not the inter-module forwarding hop §3 discourages. **Flatness itself is not the
+smell:** genuinely independent shards — no shared-helper back-edge, no cross-import — stay flat as siblings;
+the back-edge, not the file count, is what forces the package.
+
 **Decomposing an over-large function/class (long method / god function):** extract cohesive, named
 sub-units along the seams where the body shifts responsibility — each extraction is one nameable job over a
 related set of locals (if you can't name it in a few words, it isn't a clean seam). Keep helpers private and
@@ -134,7 +153,8 @@ layer worse.
 
 ## 6. Safe-Deletion Playbook
 
-**All eight steps required before any hard delete.** Deletion is high-tier (`safety.md`). Approval
+**Work all eight steps for any hard delete** — steps 1–6 before you delete, step 7 is the deletion itself,
+step 8 secures the revert hatch. Deletion is high-tier (`safety.md`). Approval
 semantics are owned by the **Deletion gates in SKILL.md**: approval-tier items (documented extension
 points, outward-facing shims/re-exports, config-reachable registrations, and their pinning tests) need the
 user's explicit per-item confirmation, and **when no user is reachable the disposition is keep + flag —
@@ -149,16 +169,25 @@ gates have cleared.
 3. **Cross-repo / external usage check** for library code. Skip only if provably process-internal.
 4. **Git last-touched** — `git log -1 -- <path>`, `git log -S 'symbol'`. Unchanged ≠ unused, but
    unchanged-for-years + unreferenced is meaningful.
-5. **Tombstone before deletion** — replace body with a logging call, or move to `_archive/` still on the
-   import path. Soak (campaign mode: one later-round confirmation). **Dead-until-proven-live.**
+5. **Tombstone before deletion** — keep the original behavior and *add* a logging call (log-and-delegate:
+   record the call, then run the real body), or move to `_archive/` still on the import path. Do **not**
+   replace the body with a bare log — that changes behavior, and a non-enumerable live consumer (the exact
+   thing the soak exists to catch) would break *during* the soak. Soak = **one later-round confirmation**
+   (campaign mode). **A single pass has no later round, so a not-proven-dead deletion cannot COMPLETE in one
+   pass** — defer it to campaign mode or keep-and-flag for the user; only the proven-dead carve-out below
+   deletes without a soak. **Dead-until-proven-live.**
 6. **Characterize** — a test capturing current behavior even if you intend to delete.
 7. **Delete in an isolated change** — one logical deletion per change boundary.
-8. **Tag the revert hatch — and verify it exists.** `git tag pre-cleanup-<YYYY-QN>` so restoring is one
-   `git revert`. If the tree is **untracked**, there is no git history to restore from — create a baseline
-   copy (or preserve removed code verbatim in the report) *before* deleting; never claim a restore path
-   without checking it is real.
+8. **Secure the revert hatch — and verify it exists.** Tag the pre-deletion commit with a unique,
+   non-colliding name (e.g. `git tag pre-cleanup-<short-sha>` — not a date, which collides on a second
+   cleanup) so a removed file is restorable with `git restore --source=<tag> -- <path>`. (A tag only marks a
+   commit; `git revert <tag>` would invert the *tagged* commit, not the deletion — and it creates a commit,
+   which the commit-only-when-asked rule forbids.) If the tree is **untracked**, there is no git history to
+   restore from — create a baseline copy (or preserve removed code verbatim in the report) *before* deleting;
+   never claim a restore path without checking it is real.
 
-**Hard rule:** if any of steps (2)(3)(4)(5) is skipped, do not delete — surface the gap and ask the user.
+**Hard rule:** if any of steps (2)(3)(4) — or (5), unless the Proven-dead carve-out below applies — is
+skipped, do not delete: surface the gap and ask the user.
 
 **Proven-dead carve-out:** steps 1–4 are how you *prove* dead. Once they show zero references (including
 dynamic and external) and the symbol is a verified test-only orphan or data-flow-dead branch (§7), skip the
@@ -185,7 +214,7 @@ weight collects in cold code). Three finding classes, one shared bar:
 
 **Verify, confirm with the user, then delete.** Every hit is a *candidate*: disprove "live" with code
 evidence (dynamic/decorator/registry dispatch, config-enabled paths, public/external surfaces,
-non-default-mode fallbacks — §4), then **present the evidence-backed candidates for approval** (batch them
-via the needs-verification loop in `diagnosis.md`) and run the §6 playbook. Apply the same lens to tests —
+non-default-mode fallbacks — §4), then **present the evidence-backed candidates for approval as one batched
+yes/no list** (grouped: safely-removable / keepers / still-undetermined) and run the §6 playbook. Apply the same lens to tests —
 drop tests of removed symbols and *verified*-redundant duplicates, never blanket-cut (the suite is the
 behavior-preservation net).

@@ -35,10 +35,11 @@ that are easy to get wrong even when detection is easy.
 | Mode | When | Then |
 |---|---|---|
 | **Single-pass** | a targeted, scoped request ("inline this wrapper", "split `utils.py`", "this one feature is hard to trace") | run the relevant stage(s) once, report, stop |
-| **Campaign** | deep / exhaustive / whole-repo cleanup, a multi-objective brief, or "keep going" | establish a ledger + scope contract, then run the bounded loop — load [references/campaign-mode.md](references/campaign-mode.md) |
+| **Campaign** | *explicit* deep / exhaustive / ongoing / whole-repo intent, or "keep going" (a multi-objective brief alone is not enough — a bounded multi-objective ask runs single-pass across the named objectives) | establish a ledger + scope contract, then run the bounded loop — load [references/campaign-mode.md](references/campaign-mode.md) |
 | **Small project** (< ~30 source files) | the whole tree fits in one head | still do a full inventory first, then work the highest-value items; skip the heavy staging. Never one-change-at-a-time without a survey. |
 
-Recommend **plan-first** for anything macro: produce and agree the staged plan before editing, so the agent
+Recommend **plan-first** for anything macro (directory regroup, public-API change, god-module split, or
+subsystem replacement): produce and agree the staged plan before editing, so the agent
 doesn't see "refactor" and start moving many files at once. In an interactive session, run the
 discovery→plan stages under plan mode and switch to auto-accepted execution only after the plan is
 approved. **Plan approval is also how the Deletion gates below get satisfied in one batch** — the plan must
@@ -59,7 +60,7 @@ needed file by reading another file mid-procedure. Every reference is **one hop*
 | Scoped small edit (one named wrapper / function / file; blast radius ≤ ~5 files) | [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) **only** — this file's workflow and Deletion gates are the staging; skip the discovery/diagnosis/execution files |
 | Diagnosis (classify, dependencies, name problems) | [references/diagnosis.md](references/diagnosis.md) + [references/techniques.md](references/techniques.md) |
 | Execution (target proposal, staged plan, patterns) | [references/execution.md](references/execution.md) + [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
-| Campaign mode | [references/campaign-mode.md](references/campaign-mode.md) + [references/safety.md](references/safety.md) |
+| Campaign mode | [references/campaign-mode.md](references/campaign-mode.md) + [references/safety.md](references/safety.md); each round re-enters the Diagnosis / Execution / deletion rows above and loads *their* files (e.g. `techniques.md` for the §6 deletion playbook) — campaign-mode.md drives the loop, it does not restate those procedures |
 | Any deletion / dead-weight audit | [references/techniques.md](references/techniques.md) + [references/safety.md](references/safety.md) |
 | Optional enrichment (leaf — only if needed) | [references/glossary.md](references/glossary.md), [scripts/](scripts/), [assets/](assets/) |
 
@@ -69,15 +70,13 @@ The execution spine is one hop; only optional enrichment may be deeper, and it i
 
 Output templates live in [assets/](assets/) — copy from them, don't regenerate from memory:
 `architecture_report.md` (discovery), `refactor_plan.md` (plan), `migration_stage_report.md` (per stage),
-`cleanup_ledger.md` (campaign). These are **blank, read-only skeletons with no project data.** Write every
-*filled* report, plan, or ledger into a **skill-named agent-work directory in the target project** — default
-`.agent_works/code-cleanup/` (namespacing by skill name avoids collisions with other agents sharing
-`.agent_works/`; fall back to a user-named path if it can't be created or conflicts). The live ledger is a
-tracked `.agent_works/code-cleanup/CLEANUP_LEDGER.md` (repo root only if the user wants it highly visible).
-**Do not** drop these
-into the project's source tree, core code, or its existing `docs/` structure — that pollutes or breaks the
-project's own layout. And **never write project data, logs, or filled outputs back into this skill folder** —
-the skill is immutable at runtime; contaminating it would pollute every future run on every other project.
+`cleanup_ledger.md` (campaign). These are **read-only skeletons** carrying no real project data (the ledger
+includes clearly-marked example rows — delete them before filling). Write every
+*filled* report, plan, or ledger into a **skill-named agent-work directory** — default
+`.agent_works/code-cleanup/` (fall back to a user-named path on conflict); the live ledger is a tracked
+`.agent_works/code-cleanup/CLEANUP_LEDGER.md` (repo root only if the user wants it highly visible).
+**Never** write these into the project's source, core, or `docs/` tree (pollutes its layout), or back into
+this skill folder — the skill is immutable at runtime; contaminating it breaks every future run.
 
 ---
 
@@ -86,15 +85,11 @@ the skill is immutable at runtime; contaminating it would pollute every future r
 1. **Primary outputs first.** Discovery produces the two artifacts a maintainer reads first — a project
    structure map and a call graph with a per-hop audit. They guide every later decision.
 2. **Diagnose before refactoring.** Read the map and call graph before moving, deleting, or rewriting.
-3. **Every layer must earn its existence.** Default to flat composition. A hop (function, class, file,
-   branch) is kept only if it is a real boundary, adds validation/transformation/orchestration/error
-   handling, encapsulates an external dependency, gives a genuine test seam or reuse, or makes the code
-   easier to understand than calling directly. Otherwise it's a candidate to inline or merge — judged in
-context, not removed on pattern-match. **This gate applies to your own
-   edits too** — agents over-produce indirection; don't add a layer the project didn't ask for. Judge it
-   **globally, not in isolation** — sweep all public entrypoints for parallel/duplicate entries (two public
-   entries → one impl; a registry/factory → one impl), since a hop that looks justified locally can be a 1:1
-   duplicate of another entry.
+3. **Every layer must earn its existence.** Default to flat composition; keep a hop (function, class, file,
+   branch) only if it is a real boundary, seam, or genuine reuse — otherwise inline/merge, judged in context,
+   never on pattern-match. Applies to your **own** edits too (agents over-produce indirection), and judged
+   **globally** — sweep all public entrypoints, since a locally-justified hop can be a 1:1 duplicate of
+   another entry. (Full gate + global sweep: `techniques.md` §1, §5.)
 4. **Directness-first; no permanent fallbacks.** When callers are fully enumerable, move code and update all
    callers atomically — land clean, no wrapper. A compatibility layer is a bounded exception (non-enumerable
    consumers only), tracked to removal. A permanent "temporary" wrapper is a new permanent hop — a failure.
@@ -103,11 +98,10 @@ context, not removed on pattern-match. **This gate applies to your own
    framework/plugin paths are invisible to it — verify before acting.
 6. **Clear classification, specific names.** One nameable responsibility per module; avoid vague
    `manager` / `handler` / `processor` / `utils` / `common` unless the job is specific and documented.
-7. **Local conventions first; smallest move-set that resolves the diagnostic.** Honor the project's and its
-   framework's own conventions where a *sensible* convention exists — existing chaos is not a convention.
-   When there is none, or the user asks to reconstruct toward a clearer structure, a full evidence-derived
-   regroup mirrored on an OSS exemplar (cited) is the right-sized move: "smallest" bounds scope creep, it
-   does not cap a reconstruction the diagnostic actually requires.
+7. **Local conventions first; smallest move-set that resolves the diagnostic.** Honor a *sensible* existing
+   convention (existing chaos is not one). With none — or when the user asks to reconstruct — the full
+   evidence-derived regroup mirrored on a cited OSS exemplar is the right-sized move: "smallest" bounds scope
+   creep, it does not cap a requested reconstruction. (`execution.md`.)
 8. **Risk-tiered safety.** Low (reversible) → proceed; medium → proceed with verification; high
    (irreversible / outward-facing) → checkpoint with the user. Verify after each change; revert-on-red.
 9. **Behavior change needs explicit approval.** One logical change per boundary — no tangling refactor with
@@ -157,7 +151,10 @@ duplicates) follows the Safe-Deletion Playbook procedure in
 3. **Execution** — propose a target (local-first), plan the smallest staged set of moves, execute behavior-
    preservingly with verification — staged refactor or, when the evidence supports it, a scoped rewrite the
    user has agreed to. **If the project has no test suite or goldens, build the behavior net first** —
-   capture the output of every documented command *before* the first edit and re-verify against it after.
+   capture the output of the **deterministic, side-effect-free** documented commands (build, read-only CLI,
+   boundary queries) *before* the first edit and re-verify against it after. Do **not** run deploy /
+   data-mutating / long-running-server / secret-dependent / nondeterministic commands to build goldens —
+   record their exit codes and normalized artifacts, or ask the user.
    Campaign mode runs this as a continuous ledger-driven loop.
 
 Deep rewrite is the right answer when the structure is unnecessary and
@@ -173,7 +170,9 @@ The refactor is successful only if:
 1. The project has a clear structure map and documented entry points.
 2. Major call paths are understandable; entry/wiring is separated from domain logic, so a maintainer can see
    where execution begins and debugging requires less cross-file jumping.
-3. **Every touched feature's meaningful-hop count after ≤ before** (multi-hop reduced, not relocated).
+3. **Every touched feature's meaningful-hop count after ≤ before** (multi-hop reduced, not relocated) — and
+   any module or god-function split leaves an **acyclic** graph: no re-export back-edge or shared-helper cycle
+   between a parent and its shards (`techniques.md` §5).
 4. **No orphaned compatibility layers remain** (no permanent "temporary" wrappers).
 5. Module responsibilities and names are clear.
 6. Dead / stale / orphaned code and files, duplicated logic, and redundant tests were removed — each verified
